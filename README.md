@@ -3,7 +3,7 @@
 **Personnel on Board (POB) Management System**
 Built for Testudo Nigeria Limited — Offshore Oil & Gas Operations
 
-A full-stack web platform for managing personnel presence, room allocation, activity planning, compliance tracking, travel logistics, and cost optimization across offshore vessels and installations.
+A backend API for managing personnel presence, room allocation, activity planning, compliance tracking, travel logistics, minimum manning operations, and reporting across offshore vessels and installations.
 
 ---
 
@@ -11,17 +11,23 @@ A full-stack web platform for managing personnel presence, room allocation, acti
 
 | Layer        | Technology                                       |
 | ------------ | ------------------------------------------------ |
-| Frontend     | React.js + TypeScript + Tailwind CSS + shadcn/ui |
-| Charts       | Recharts / Chart.js                              |
-| Gantt        | DHTMLX Gantt or Bryntum                          |
 | Backend      | Go (Golang) — Clean Architecture                 |
 | API Style    | RESTful JSON                                     |
-| Database     | PostgreSQL                                       |
+| Database     | MongoDB                                          |
 | Cache        | Redis                                            |
 | Auth         | JWT + Refresh Tokens + RBAC                      |
 | File Storage | AWS S3 (certificate PDFs)                        |
 | Hosting      | AWS / Azure                                      |
 | Containers   | Docker                                           |
+
+---
+
+## Project Scope
+
+- This repository is for the backend only.
+- The primary deliverable is a production-ready REST API.
+- Frontend, mobile apps, and third-party integrations are out of scope for the initial build.
+- Cost optimization and AI-assisted planning are deferred until the core operational flows are stable.
 
 ---
 
@@ -60,23 +66,14 @@ A full-stack web platform for managing personnel presence, room allocation, acti
 ### Phase 1 — Foundation
 
 - Go project scaffold (Clean Architecture)
-- PostgreSQL + Redis connection
+- MongoDB + Redis connection
 - Environment config (.env, config loader)
 - JWT + Refresh Token auth system
 - RBAC middleware (6 roles)
 - User management (CRUD)
-- Database migrations setup
+- MongoDB indexes and bootstrap setup
 
-### Phase 2 — Vessel & Room Management
-
-- Vessel setup (primary + secondary vessel)
-- POB cap configuration per vessel
-- Room management (create, assign, track)
-- Core vs Flexible crew slot definitions
-- Real-time POB count via Redis
-- Overshoot detection and alerting
-
-### Phase 3 — Personnel & Compliance
+### Phase 2 — Personnel & Compliance
 
 - Personnel profile management
 - Certificate management (BOSIET, DPR Offshore Permit, Scaffolding, role-specific)
@@ -84,6 +81,14 @@ A full-stack web platform for managing personnel presence, room allocation, acti
 - Expiry reminder system (6 months, 4 months, 1 month before expiry)
 - Travel blocking for non-compliant personnel
 - Email + in-app alert dispatch
+
+### Phase 3 — Vessel & Room Management
+
+- Vessel setup (primary + secondary vessel)
+- POB cap configuration per vessel
+- Room management (create, assign, track)
+- Real-time POB count via Redis
+- Overshoot detection and alerting
 
 ### Phase 4 — Roles & Rotation
 
@@ -125,9 +130,30 @@ A full-stack web platform for managing personnel presence, room allocation, acti
 - Upcoming activities (next 7 days)
 - Expiring certificates (next 30 days)
 - Upcoming travel schedule (next 7 days)
-- Cost risk alerts summary
 - Priority distribution of active activities
 - Export reports as PDF and CSV
+
+---
+
+## Recommended Build Order
+
+This is the lowest-rework backend delivery order based on feature dependencies:
+
+1. Phase 1 — Foundation
+2. Phase 2 — Personnel & Compliance
+3. Phase 3 — Vessel & Room Management
+4. Phase 4 — Roles & Rotation
+5. Phase 5 — Activity Management
+6. Phase 6 — Travel & Mobilization
+7. Phase 7 — Minimum Manning Mode
+8. Phase 8 — Dashboard & Reporting
+
+Dependency notes:
+
+- Personnel and compliance should be implemented before travel and activity staffing rules.
+- Vessel, room, and POB capacity rules should exist before minimum manning behavior is introduced.
+- Roles and rotation should be stable before activity scheduling depends on them.
+- Dashboards and reports should be built after the operational modules they summarize.
 
 ---
 
@@ -176,8 +202,6 @@ All routes are prefixed with `/api/v1`
 | GET    | `/:id/capacity`        | POB capacity status             | Authenticated           |
 | PATCH  | `/:id/pob-cap`         | Set or update POB cap           | Sys Admin               |
 | GET    | `/:id/manifest`        | Full POB manifest snapshot      | Planner, OIM, Sys Admin |
-| POST   | `/:id/minimum-manning` | Activate Minimum Manning Mode   | OIM, Sys Admin          |
-| DELETE | `/:id/minimum-manning` | Deactivate Minimum Manning Mode | OIM, Sys Admin          |
 
 ---
 
@@ -223,7 +247,6 @@ All routes are prefixed with `/api/v1`
 | PATCH  | `/:id/certificates/:certId` | Update certificate record     | Safety Admin, Sys Admin          |
 | DELETE | `/:id/certificates/:certId` | Delete certificate            | Safety Admin, Sys Admin          |
 | GET    | `/:id/compliance`           | Get compliance status summary | Safety Admin, Planner, Sys Admin |
-| GET    | `/:id/travel`               | Get assigned travel schedule  | Authenticated, Own               |
 
 ---
 
@@ -261,18 +284,6 @@ All routes are prefixed with `/api/v1`
 
 ---
 
-### Cost Optimization — `/api/v1/cost`
-
-| Method | Endpoint            | Description                          | Access                  |
-| ------ | ------------------- | ------------------------------------ | ----------------------- |
-| GET    | `/trips`            | All transport trip costs             | Planner, Sys Admin      |
-| GET    | `/trips/:id`        | Cost breakdown for a specific trip   | Planner, Sys Admin      |
-| GET    | `/idle-contractors` | Idle contractor days and cost impact | Planner, Sys Admin      |
-| GET    | `/risk-alerts`      | Top cost inefficiencies summary      | Planner, OIM, Sys Admin |
-| GET    | `/compare`          | Compare cost of scheduling decisions | Planner                 |
-
----
-
 ### Compliance — `/api/v1/compliance`
 
 | Method | Endpoint                 | Description                                        | Access                       |
@@ -281,19 +292,6 @@ All routes are prefixed with `/api/v1`
 | GET    | `/expired`               | All expired certificates                           | Safety Admin                 |
 | POST   | `/validate/:personnelId` | Validate personnel compliance for travel           | Safety Admin, Planner        |
 | GET    | `/activity/:activityId`  | Compliance status for all personnel on an activity | Safety Admin, Activity Owner |
-
----
-
-### AI Optimization — `/api/v1/optimization`
-
-| Method | Endpoint                 | Description                            | Access  |
-| ------ | ------------------------ | -------------------------------------- | ------- |
-| POST   | `/generate`              | Generate weekly room distribution plan | Planner |
-| GET    | `/plan/:weekId`          | Get generated plan for a week          | Planner |
-| POST   | `/plan/:weekId/approve`  | Planner approves the plan              | Planner |
-| POST   | `/plan/:weekId/override` | Planner manually overrides plan        | Planner |
-| GET    | `/overshoot`             | Get current overshoot scenarios        | Planner |
-| GET    | `/overshoot/suggestions` | Get suggestions to resolve overshoot   | Planner |
 
 ---
 
@@ -306,7 +304,6 @@ All routes are prefixed with `/api/v1`
 | GET    | `/activities/upcoming`   | Activities in the next 7 days         | Authenticated           |
 | GET    | `/certificates/expiring` | Certificates expiring in next 30 days | Safety Admin, Planner   |
 | GET    | `/travel/upcoming`       | Travel schedule for next 7 days       | Planner, Personnel      |
-| GET    | `/cost/risks`            | Cost risk summary                     | Planner, OIM, Sys Admin |
 
 ---
 
@@ -383,9 +380,9 @@ pob-backend/
 
 ## System Constraints
 
-- Web application is the primary Phase 1 deliverable (no mobile app)
+- Backend API is the primary Phase 1 deliverable
 - Certificate documents accepted in PDF format only
-- AI optimization is weekly-scoped (no real-time continuous optimization in Phase 1)
+- AI optimization is out of scope for the initial backend phases
 - No third-party ERP/HR integration in Phase 1 (API designed to support it later)
 - All cost values stored and displayed in USD unless configured otherwise
 
