@@ -24,14 +24,21 @@ func NewUserRepository(db *mongo.Database) *UserRepository {
 }
 
 func (r *UserRepository) EnsureIndexes(ctx context.Context) error {
-	index := mongo.IndexModel{
-		Keys: bson.D{{Key: "email", Value: 1}},
-		Options: options.Index().
-			SetUnique(true).
-			SetName("users_email_unique"),
+	indexes := []mongo.IndexModel{
+		{
+			Keys: bson.D{{Key: "email", Value: 1}},
+			Options: options.Index().
+				SetUnique(true).
+				SetName("users_email_unique"),
+		},
+		{
+			Keys: bson.D{{Key: "organization_id", Value: 1}},
+			Options: options.Index().
+				SetName("users_organization_id_idx"),
+		},
 	}
 
-	_, err := r.collection.Indexes().CreateOne(ctx, index)
+	_, err := r.collection.Indexes().CreateMany(ctx, indexes)
 	return err
 }
 
@@ -137,6 +144,119 @@ func (r *UserRepository) ClearRefreshToken(ctx context.Context, id bson.ObjectID
 	}
 
 	result, err := r.collection.UpdateOne(ctx, bson.M{"_id": id}, update)
+	if err != nil {
+		return err
+	}
+	if result.MatchedCount == 0 {
+		return ErrUserNotFound
+	}
+
+	return nil
+}
+
+func (r *UserRepository) FindAll(ctx context.Context) ([]*domain.User, error) {
+	cursor, err := r.collection.Find(ctx, bson.M{})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var users []*domain.User
+	if err := cursor.All(ctx, &users); err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
+
+func (r *UserRepository) FindAllByOrganization(ctx context.Context, organizationID bson.ObjectID) ([]*domain.User, error) {
+	cursor, err := r.collection.Find(ctx, bson.M{"organization_id": organizationID})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var users []*domain.User
+	if err := cursor.All(ctx, &users); err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
+
+func (r *UserRepository) FindByIDAndOrganization(ctx context.Context, id, organizationID bson.ObjectID) (*domain.User, error) {
+	var user domain.User
+	err := r.collection.FindOne(ctx, bson.M{"_id": id, "organization_id": organizationID}).Decode(&user)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, ErrUserNotFound
+		}
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+func (r *UserRepository) Count(ctx context.Context) (int64, error) {
+	return r.collection.CountDocuments(ctx, bson.M{})
+}
+
+func (r *UserRepository) UpdateUser(ctx context.Context, id, organizationID bson.ObjectID, firstName, lastName, phoneNumber, email string, vesselID *bson.ObjectID) error {
+	setFields := bson.M{
+		"first_name":   firstName,
+		"last_name":    lastName,
+		"phone_number": phoneNumber,
+		"email":        email,
+		"updated_at":   time.Now().UTC(),
+	}
+	if vesselID != nil {
+		setFields["vessel_id"] = *vesselID
+	}
+
+	update := bson.M{"$set": setFields}
+	if vesselID == nil {
+		update["$unset"] = bson.M{"vessel_id": ""}
+	}
+
+	result, err := r.collection.UpdateOne(ctx, bson.M{"_id": id, "organization_id": organizationID}, update)
+	if err != nil {
+		return err
+	}
+	if result.MatchedCount == 0 {
+		return ErrUserNotFound
+	}
+
+	return nil
+}
+
+func (r *UserRepository) ToggleUserStatus(ctx context.Context, id, organizationID bson.ObjectID, isActive bool) error {
+	update := bson.M{
+		"$set": bson.M{
+			"is_active":  isActive,
+			"updated_at": time.Now().UTC(),
+		},
+	}
+
+	result, err := r.collection.UpdateOne(ctx, bson.M{"_id": id, "organization_id": organizationID}, update)
+	if err != nil {
+		return err
+	}
+	if result.MatchedCount == 0 {
+		return ErrUserNotFound
+	}
+
+	return nil
+}
+
+func (r *UserRepository) UpdateRole(ctx context.Context, id, organizationID bson.ObjectID, role domain.UserRole) error {
+	update := bson.M{
+		"$set": bson.M{
+			"role":       role,
+			"updated_at": time.Now().UTC(),
+		},
+	}
+
+	result, err := r.collection.UpdateOne(ctx, bson.M{"_id": id, "organization_id": organizationID}, update)
 	if err != nil {
 		return err
 	}

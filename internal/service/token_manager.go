@@ -22,12 +22,13 @@ var (
 )
 
 type TokenClaims struct {
-	Subject   string `json:"sub"`
-	Email     string `json:"email"`
-	Role      string `json:"role"`
-	TokenType string `json:"type"`
-	ExpiresAt int64  `json:"exp"`
-	IssuedAt  int64  `json:"iat"`
+	OrganizationID string `json:"organization_id"`
+	Subject        string `json:"sub"`
+	Email          string `json:"email"`
+	Role           string `json:"role"`
+	TokenType      string `json:"type"`
+	ExpiresAt      int64  `json:"exp"`
+	IssuedAt       int64  `json:"iat"`
 }
 
 type TokenManager struct {
@@ -44,15 +45,15 @@ func NewTokenManager(secret string, accessTTLMinutes, refreshTTLHours int) *Toke
 	}
 }
 
-func (m *TokenManager) GenerateAccessToken(subject, email, role string) (string, time.Time, error) {
+func (m *TokenManager) GenerateAccessToken(subject, organizationID, email, role string) (string, time.Time, error) {
 	expiresAt := time.Now().UTC().Add(time.Duration(m.accessTTLMinutes) * time.Minute)
-	token, err := m.generate(subject, email, role, AccessTokenType, expiresAt)
+	token, err := m.generate(subject, organizationID, email, role, AccessTokenType, expiresAt)
 	return token, expiresAt, err
 }
 
-func (m *TokenManager) GenerateRefreshToken(subject, email, role string) (string, time.Time, error) {
+func (m *TokenManager) GenerateRefreshToken(subject, organizationID, email, role string) (string, time.Time, error) {
 	expiresAt := time.Now().UTC().Add(time.Duration(m.refreshTTLHours) * time.Hour)
-	token, err := m.generate(subject, email, role, RefreshTokenType, expiresAt)
+	token, err := m.generate(subject, organizationID, email, role, RefreshTokenType, expiresAt)
 	return token, expiresAt, err
 }
 
@@ -94,7 +95,7 @@ func (m *TokenManager) HashToken(token string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func (m *TokenManager) generate(subject, email, role, tokenType string, expiresAt time.Time) (string, error) {
+func (m *TokenManager) generate(subject, organizationID, email, role, tokenType string, expiresAt time.Time) (string, error) {
 	header := map[string]string{
 		"alg": "HS256",
 		"typ": "JWT",
@@ -106,12 +107,13 @@ func (m *TokenManager) generate(subject, email, role, tokenType string, expiresA
 	}
 
 	claims := TokenClaims{
-		Subject:   subject,
-		Email:     email,
-		Role:      role,
-		TokenType: tokenType,
-		ExpiresAt: expiresAt.Unix(),
-		IssuedAt:  time.Now().UTC().Unix(),
+		OrganizationID: organizationID,
+		Subject:        subject,
+		Email:          email,
+		Role:           role,
+		TokenType:      tokenType,
+		ExpiresAt:      expiresAt.Unix(),
+		IssuedAt:       time.Now().UTC().Unix(),
 	}
 
 	payloadBytes, err := json.Marshal(claims)

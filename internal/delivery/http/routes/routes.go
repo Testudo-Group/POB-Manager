@@ -19,9 +19,12 @@ func Setup(r *gin.Engine, db *mongo.Database, cfg *config.Config) {
 	})
 
 	userRepository := repository.NewUserRepository(db)
+	organizationRepository := repository.NewOrganizationRepository(db)
 	tokenManager := service.NewTokenManager(cfg.JWTSecret, cfg.AccessTokenTTLMinutes, cfg.RefreshTokenTTLHours)
-	authService := service.NewAuthService(userRepository, tokenManager)
+	authService := service.NewAuthService(userRepository, organizationRepository, tokenManager)
+	userService := service.NewUserService(userRepository)
 	authController := controllers.NewAuthController(authService)
+	userController := controllers.NewUserController(userService)
 	authMiddleware := middleware.NewAuthMiddleware(tokenManager)
 
 	if err := authService.Initialize(context.Background()); err != nil {
@@ -43,5 +46,17 @@ func Setup(r *gin.Engine, db *mongo.Database, cfg *config.Config) {
 			authenticated.PATCH("/me", authController.UpdateMe)
 			authenticated.POST("/change-password", authController.ChangePassword)
 		}
+	}
+
+	users := api.Group("/users")
+	users.Use(authMiddleware.RequireAuth(), middleware.RequirePermission(config.PermListUsers))
+	{
+		users.POST("", middleware.RequirePermission(config.PermAssignUserRole), userController.CreateUser)
+		users.GET("", userController.ListUsers)
+		users.GET("/", userController.ListUsers)
+		users.GET("/:id", userController.GetUser)
+		users.PATCH("/:id", middleware.RequirePermission(config.PermUpdateUser), userController.UpdateUser)
+		users.DELETE("/:id", middleware.RequirePermission(config.PermDeactivateUser), userController.DeactivateUser)
+		users.PATCH("/:id/role", middleware.RequirePermission(config.PermAssignUserRole), userController.UpdateRole)
 	}
 }

@@ -16,19 +16,24 @@ var (
 	ErrInvalidCredentials  = errors.New("invalid credentials")
 	ErrEmailAlreadyExists  = errors.New("email already exists")
 	ErrInvalidRefreshToken = errors.New("invalid refresh token")
+	ErrOrganizationExists  = errors.New("organization already exists")
 )
 
 type AuthService struct {
-	userRepository *repository.UserRepository
-	tokenManager   *TokenManager
+	userRepository         *repository.UserRepository
+	organizationRepository *repository.OrganizationRepository
+	tokenManager           *TokenManager
 }
 
 type RegisterInput struct {
-	FirstName string
-	LastName  string
-	Email     string
-	Password  string
-	Role      domain.UserRole
+	OrganizationName    string
+	OrganizationPhone   string
+	OrganizationAddress string
+	FirstName           string
+	LastName            string
+	PhoneNumber         string
+	Email               string
+	Password            string
 }
 
 type LoginInput struct {
@@ -53,19 +58,24 @@ type AuthTokens struct {
 	RefreshTokenTTL time.Time `json:"refresh_token_expires_at"`
 }
 
-func NewAuthService(userRepository *repository.UserRepository, tokenManager *TokenManager) *AuthService {
+func NewAuthService(userRepository *repository.UserRepository, organizationRepository *repository.OrganizationRepository, tokenManager *TokenManager) *AuthService {
 	return &AuthService{
-		userRepository: userRepository,
-		tokenManager:   tokenManager,
+		userRepository:         userRepository,
+		organizationRepository: organizationRepository,
+		tokenManager:           tokenManager,
 	}
 }
 
 func (s *AuthService) Initialize(ctx context.Context) error {
-	return s.userRepository.EnsureIndexes(ctx)
+	if err := s.userRepository.EnsureIndexes(ctx); err != nil {
+		return err
+	}
+	return s.organizationRepository.EnsureIndexes(ctx)
 }
 
 func (s *AuthService) Register(ctx context.Context, input RegisterInput) (*domain.User, *AuthTokens, error) {
 	email := strings.ToLower(strings.TrimSpace(input.Email))
+	organizationName := strings.TrimSpace(input.OrganizationName)
 
 	_, err := s.userRepository.FindByEmail(ctx, email)
 	if err == nil {
@@ -75,22 +85,49 @@ func (s *AuthService) Register(ctx context.Context, input RegisterInput) (*domai
 		return nil, nil, err
 	}
 
+	_, err = s.organizationRepository.FindByName(ctx, organizationName)
+	if err == nil {
+		return nil, nil, ErrOrganizationExists
+	}
+	if err != nil && !errors.Is(err, repository.ErrOrganizationNotFound) {
+		return nil, nil, err
+	}
+
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	now := time.Now().UTC()
+	organization := &domain.Organization{
+		ID:        bson.NewObjectID(),
+		Name:      organizationName,
+		Phone:     strings.TrimSpace(input.OrganizationPhone),
+		Address:   strings.TrimSpace(input.OrganizationAddress),
+		IsActive:  true,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+
+	if err := s.organizationRepository.Create(ctx, organization); err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "duplicate") || strings.Contains(strings.ToLower(err.Error()), "e11000") {
+			return nil, nil, ErrOrganizationExists
+		}
+		return nil, nil, err
+	}
+
 	user := &domain.User{
-		ID:           bson.NewObjectID(),
-		FirstName:    strings.TrimSpace(input.FirstName),
-		LastName:     strings.TrimSpace(input.LastName),
-		Email:        email,
-		PasswordHash: string(passwordHash),
-		Role:         input.Role,
-		IsActive:     true,
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		ID:             bson.NewObjectID(),
+		OrganizationID: organization.ID,
+		FirstName:      strings.TrimSpace(input.FirstName),
+		LastName:       strings.TrimSpace(input.LastName),
+		PhoneNumber:    strings.TrimSpace(input.PhoneNumber),
+		Email:          email,
+		PasswordHash:   string(passwordHash),
+		Role:           domain.RoleSystemAdmin,
+		IsActive:       true,
+		CreatedAt:      now,
+		UpdatedAt:      now,
 	}
 
 	if err := s.userRepository.Create(ctx, user); err != nil {
@@ -224,12 +261,12 @@ func (s *AuthService) ChangePassword(ctx context.Context, userID string, input C
 }
 
 func (s *AuthService) issueTokens(ctx context.Context, user *domain.User) (*AuthTokens, error) {
-	accessToken, accessExpiresAt, err := s.tokenManager.GenerateAccessToken(user.ID.Hex(), user.Email, string(user.Role))
+	accessToken, accessExpiresAt, err := s.tokenManager.GenerateAccessToken(user.ID.Hex(), user.OrganizationID.Hex(), user.Email, string(user.Role))
 	if err != nil {
 		return nil, err
 	}
 
-	refreshToken, refreshExpiresAt, err := s.tokenManager.GenerateRefreshToken(user.ID.Hex(), user.Email, string(user.Role))
+	refreshToken, refreshExpiresAt, err := s.tokenManager.GenerateRefreshToken(user.ID.Hex(), user.OrganizationID.Hex(), user.Email, string(user.Role))
 	if err != nil {
 		return nil, err
 	}

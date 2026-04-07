@@ -15,11 +15,14 @@ type AuthController struct {
 }
 
 type registerRequest struct {
-	FirstName string          `json:"first_name" binding:"required"`
-	LastName  string          `json:"last_name" binding:"required"`
-	Email     string          `json:"email" binding:"required,email"`
-	Password  string          `json:"password" binding:"required,min=8"`
-	Role      domain.UserRole `json:"role" binding:"required"`
+	OrganizationName    string `json:"organization_name" binding:"required"`
+	OrganizationPhone   string `json:"organization_phone" binding:"required"`
+	OrganizationAddress string `json:"organization_address" binding:"required"`
+	FirstName           string `json:"first_name" binding:"required"`
+	LastName            string `json:"last_name" binding:"required"`
+	PhoneNumber         string `json:"phone_number" binding:"required"`
+	Email               string `json:"email" binding:"required,email"`
+	Password            string `json:"password" binding:"required,min=8"`
 }
 
 type loginRequest struct {
@@ -52,28 +55,27 @@ func (ctl *AuthController) Register(c *gin.Context) {
 		return
 	}
 
-	if !isValidRole(req.Role) {
-		response.Error(c, http.StatusBadRequest, "invalid role")
-		return
-	}
-
 	user, tokens, err := ctl.authService.Register(c.Request.Context(), service.RegisterInput{
-		FirstName: req.FirstName,
-		LastName:  req.LastName,
-		Email:     req.Email,
-		Password:  req.Password,
-		Role:      req.Role,
+		OrganizationName:    req.OrganizationName,
+		OrganizationPhone:   req.OrganizationPhone,
+		OrganizationAddress: req.OrganizationAddress,
+		FirstName:           req.FirstName,
+		LastName:            req.LastName,
+		PhoneNumber:         req.PhoneNumber,
+		Email:               req.Email,
+		Password:            req.Password,
 	})
 	if err != nil {
-		if errors.Is(err, service.ErrEmailAlreadyExists) {
+		switch {
+		case errors.Is(err, service.ErrEmailAlreadyExists), errors.Is(err, service.ErrOrganizationExists):
 			response.Error(c, http.StatusConflict, err.Error())
-			return
+		default:
+			response.Error(c, http.StatusInternalServerError, "failed to register organization")
 		}
-		response.Error(c, http.StatusInternalServerError, "failed to register user")
 		return
 	}
 
-	response.Success(c, http.StatusCreated, "user registered successfully", gin.H{
+	response.Success(c, http.StatusCreated, "organization registered successfully", gin.H{
 		"user":   sanitizeUser(user),
 		"tokens": tokens,
 	})
@@ -194,23 +196,20 @@ func (ctl *AuthController) ChangePassword(c *gin.Context) {
 }
 
 func sanitizeUser(user *domain.User) gin.H {
-	return gin.H{
-		"id":         user.ID.Hex(),
-		"first_name": user.FirstName,
-		"last_name":  user.LastName,
-		"email":      user.Email,
-		"role":       user.Role,
-		"is_active":  user.IsActive,
-		"created_at": user.CreatedAt,
-		"updated_at": user.UpdatedAt,
+	data := gin.H{
+		"id":              user.ID.Hex(),
+		"organization_id": user.OrganizationID.Hex(),
+		"first_name":      user.FirstName,
+		"last_name":       user.LastName,
+		"phone_number":    user.PhoneNumber,
+		"email":           user.Email,
+		"role":            user.Role,
+		"is_active":       user.IsActive,
+		"created_at":      user.CreatedAt,
+		"updated_at":      user.UpdatedAt,
 	}
-}
-
-func isValidRole(role domain.UserRole) bool {
-	switch role {
-	case domain.RoleActivityOwner, domain.RolePlanner, domain.RoleSafetyAdmin, domain.RoleOIM, domain.RolePersonnel, domain.RoleSysAdmin:
-		return true
-	default:
-		return false
+	if user.VesselID != nil {
+		data["vessel_id"] = user.VesselID.Hex()
 	}
+	return data
 }
