@@ -79,3 +79,52 @@ func (s *CertificateService) Create(ctx context.Context, input CreateCertificate
 func (s *CertificateService) FindByPersonnelID(ctx context.Context, personnelID bson.ObjectID) ([]domain.Certificate, error) {
 	return s.repo.FindByPersonnelID(ctx, personnelID)
 }
+
+func (s *CertificateService) FindByID(ctx context.Context, id bson.ObjectID) (*domain.Certificate, error) {
+	return s.repo.FindByID(ctx, id)
+}
+
+func (s *CertificateService) Update(ctx context.Context, id bson.ObjectID, input CreateCertificateInput) (*domain.Certificate, error) {
+	if input.ExpiresAt.Before(input.IssuedAt) {
+		return nil, ErrInvalidDates
+	}
+
+	_, err := s.typeRepo.FindByCode(ctx, input.CertificateType)
+	if err != nil {
+		return nil, ErrInvalidCertificateType
+	}
+
+	cert, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+	
+	status := domain.CertificateStatusValid
+	if now.After(input.ExpiresAt) {
+		status = domain.CertificateStatusExpired
+	} else if input.ExpiresAt.Sub(now) < 30*24*time.Hour {
+		status = domain.CertificateStatusExpiring
+	}
+
+	cert.CertificateType = input.CertificateType
+	cert.CertificateNumber = input.CertificateNumber
+	cert.IssuedBy = input.IssuedBy
+	cert.IssuedAt = input.IssuedAt
+	cert.ExpiresAt = input.ExpiresAt
+	cert.DocumentURL = input.DocumentURL
+	cert.Status = status
+	cert.UpdatedAt = now
+
+	err = s.repo.Update(ctx, cert)
+	if err != nil {
+		return nil, err
+	}
+
+	return cert, nil
+}
+
+func (s *CertificateService) Delete(ctx context.Context, id bson.ObjectID) error {
+	return s.repo.Delete(ctx, id)
+}

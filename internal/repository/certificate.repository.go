@@ -68,3 +68,32 @@ func (r *CertificateRepository) FindByPersonnelID(ctx context.Context, personnel
 
 	return certs, nil
 }
+
+func (r *CertificateRepository) Update(ctx context.Context, cert *domain.Certificate) error {
+	filter := bson.M{"_id": cert.ID}
+	update := bson.M{"$set": cert}
+	
+	result, err := r.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+	
+	if result.MatchedCount == 0 {
+		return ErrCertificateNotFound
+	}
+	
+	return nil
+}
+
+func (r *CertificateRepository) Delete(ctx context.Context, id bson.ObjectID) error {
+	result, err := r.collection.DeleteOne(ctx, bson.M{"_id": id})
+	if err != nil {
+		return err
+	}
+	
+	if result.DeletedCount == 0 {
+		return ErrCertificateNotFound
+	}
+	
+	return nil
+}

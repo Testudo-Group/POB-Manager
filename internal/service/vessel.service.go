@@ -17,14 +17,16 @@ var (
 )
 
 type VesselService struct {
-	repo  *repository.VesselRepository
-	redis *redis.Client
+	repo           *repository.VesselRepository
+	assignmentRepo *repository.RoomAssignmentRepository
+	redis          *redis.Client
 }
 
-func NewVesselService(repo *repository.VesselRepository, rdb *redis.Client) *VesselService {
+func NewVesselService(repo *repository.VesselRepository, assignmentRepo *repository.RoomAssignmentRepository, rdb *redis.Client) *VesselService {
 	return &VesselService{
-		repo:  repo,
-		redis: rdb,
+		repo:           repo,
+		assignmentRepo: assignmentRepo,
+		redis:          rdb,
 	}
 }
 
@@ -69,6 +71,36 @@ func (s *VesselService) FindAll(ctx context.Context) ([]domain.Vessel, error) {
 	return s.repo.FindAll(ctx)
 }
 
+func (s *VesselService) GetByID(ctx context.Context, id bson.ObjectID) (*domain.Vessel, error) {
+	return s.repo.FindByID(ctx, id)
+}
+
+func (s *VesselService) Update(ctx context.Context, id bson.ObjectID, input CreateVesselInput) (*domain.Vessel, error) {
+	v, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	v.Name = input.Name
+	v.Code = input.Code
+	v.Type = domain.VesselType(input.Type)
+	v.Location = input.Location
+	v.POBCapacity = input.POBCapacity
+	v.MinimumSafePOBCapacity = input.MinimumSafePOBCapacity
+	v.UpdatedAt = time.Now()
+
+	err = s.repo.Update(ctx, v)
+	if err != nil {
+		return nil, err
+	}
+
+	return v, nil
+}
+
+func (s *VesselService) Delete(ctx context.Context, id bson.ObjectID) error {
+	return s.repo.Delete(ctx, id)
+}
+
 func (s *VesselService) GetRealTimePOB(ctx context.Context, vesselID bson.ObjectID) (int, error) {
 	key := fmt.Sprintf("vessel:%s:pob", vesselID.Hex())
 	val, err := s.redis.Get(ctx, key).Int()
@@ -111,4 +143,8 @@ func (s *VesselService) DecrementPOB(ctx context.Context, vesselID bson.ObjectID
 		s.redis.Set(ctx, key, 0, 0)
 	}
 	return err
+}
+
+func (s *VesselService) GetManifest(ctx context.Context, vesselID bson.ObjectID) ([]domain.RoomAssignment, error) {
+	return s.assignmentRepo.FindActiveByVessel(ctx, vesselID)
 }

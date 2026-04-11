@@ -63,3 +63,43 @@ func (c *PersonnelController) CheckCompliance(ctx *gin.Context) {
 
 	response.Success(ctx, http.StatusOK, "compliance status calculated", result)
 }
+
+func (c *PersonnelController) UpdatePersonnel(ctx *gin.Context) {
+	idParam := ctx.Param("id")
+	id, err := bson.ObjectIDFromHex(idParam)
+	if err != nil {
+		response.Error(ctx, http.StatusBadRequest, "invalid personnel id format")
+		return
+	}
+
+	var req service.CreatePersonnelInput
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		response.Error(ctx, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	p, err := c.personnelSvc.Update(ctx.Request.Context(), id, req)
+	if err != nil {
+		response.Error(ctx, http.StatusInternalServerError, "failed to update personnel")
+		return
+	}
+
+	response.Success(ctx, http.StatusOK, "personnel updated successfully", p)
+}
+
+func (c *PersonnelController) DeletePersonnel(ctx *gin.Context) {
+	idParam := ctx.Param("id")
+	id, err := bson.ObjectIDFromHex(idParam)
+	if err != nil {
+		response.Error(ctx, http.StatusBadRequest, "invalid personnel id format")
+		return
+	}
+
+	err = c.personnelSvc.Delete(ctx.Request.Context(), id)
+	if err != nil {
+		response.Error(ctx, http.StatusInternalServerError, "failed to delete personnel")
+		return
+	}
+
+	response.Success(ctx, http.StatusOK, "personnel deleted successfully", nil)
+}

@@ -61,3 +61,23 @@ func (r *RoomAssignmentRepository) FindActiveByRoom(ctx context.Context, roomID 
 
 	return list, nil
 }
+
+func (r *RoomAssignmentRepository) FindActiveByVessel(ctx context.Context, vesselID bson.ObjectID) ([]domain.RoomAssignment, error) {
+	filter := bson.M{
+		"vessel_id": vesselID,
+		"status":    domain.RoomAssignmentStatusActive,
+	}
+
+	cursor, err := r.collection.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var list []domain.RoomAssignment
+	if err := cursor.All(ctx, &list); err != nil {
+		return nil, err
+	}
+
+	return list, nil
+}

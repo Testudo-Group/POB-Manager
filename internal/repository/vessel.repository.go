@@ -53,7 +53,7 @@ func (r *VesselRepository) FindByID(ctx context.Context, id bson.ObjectID) (*dom
 }
 
 func (r *VesselRepository) FindAll(ctx context.Context) ([]domain.Vessel, error) {
-	cursor, err := r.collection.Find(ctx, bson.M{})
+	cursor, err := r.collection.Find(ctx, bson.M{"status": domain.VesselStatusActive})
 	if err != nil {
 		return nil, err
 	}
@@ -65,4 +65,36 @@ func (r *VesselRepository) FindAll(ctx context.Context) ([]domain.Vessel, error)
 	}
 
 	return list, nil
+}
+
+func (r *VesselRepository) Update(ctx context.Context, v *domain.Vessel) error {
+	filter := bson.M{"_id": v.ID}
+	update := bson.M{"$set": v}
+	
+	result, err := r.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+	
+	if result.MatchedCount == 0 {
+		return ErrVesselNotFound
+	}
+	
+	return nil
+}
+
+func (r *VesselRepository) Delete(ctx context.Context, id bson.ObjectID) error {
+	filter := bson.M{"_id": id}
+	update := bson.M{"$set": bson.M{"status": domain.VesselStatusInactive}}
+	
+	result, err := r.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+	
+	if result.MatchedCount == 0 {
+		return ErrVesselNotFound
+	}
+	
+	return nil
 }

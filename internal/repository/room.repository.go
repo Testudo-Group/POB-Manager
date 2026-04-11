@@ -69,3 +69,32 @@ func (r *RoomRepository) FindByVessel(ctx context.Context, vesselID bson.ObjectI
 
 	return list, nil
 }
+
+func (r *RoomRepository) Update(ctx context.Context, room *domain.Room) error {
+	filter := bson.M{"_id": room.ID}
+	update := bson.M{"$set": room}
+	
+	result, err := r.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+	
+	if result.MatchedCount == 0 {
+		return ErrRoomNotFound
+	}
+	
+	return nil
+}
+
+func (r *RoomRepository) Delete(ctx context.Context, id bson.ObjectID) error {
+	result, err := r.collection.DeleteOne(ctx, bson.M{"_id": id})
+	if err != nil {
+		return err
+	}
+	
+	if result.DeletedCount == 0 {
+		return ErrRoomNotFound
+	}
+	
+	return nil
+}

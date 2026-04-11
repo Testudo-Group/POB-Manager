@@ -38,21 +38,29 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb *redis.Client, cfg *config.Con
 	roleRepo := repository.NewOffshoreRoleRepository(db)
 	personnelRepo := repository.NewPersonnelRepository(db)
 	certRepo := repository.NewCertificateRepository(db)
+	notifRepo := repository.NewNotificationRepository(db)
 
 	certTypeRepo.EnsureIndexes(context.Background())
 	roleRepo.EnsureIndexes(context.Background())
 	personnelRepo.EnsureIndexes(context.Background())
 	certRepo.EnsureIndexes(context.Background())
+	notifRepo.EnsureIndexes(context.Background())
 
 	_ = service.NewCertificateTypeService(certTypeRepo)
 	certSvc := service.NewCertificateService(certRepo, certTypeRepo)
-	_ = certSvc // To avoid unused variable issue in the future
 	roleSvc := service.NewOffshoreRoleService(roleRepo)
 	personnelSvc := service.NewPersonnelService(personnelRepo, roleRepo)
 	compSvc := service.NewComplianceService(personnelRepo, roleRepo, certRepo, certTypeRepo)
+	notifSvc := service.NewNotificationService(notifRepo)
 	
 	roleCtrl := controllers.NewOffshoreRoleController(roleSvc)
 	personnelCtrl := controllers.NewPersonnelController(personnelSvc, compSvc)
+	certCtrl := controllers.NewCertificateController(certSvc)
+	notifCtrl := controllers.NewNotificationController(notifSvc)
+
+	// Reminder Service (Background)
+	reminderSvc := service.NewReminderService(personnelRepo, certRepo, notifSvc, userRepository)
+	reminderSvc.Start(context.Background())
 
 	if err := authService.Initialize(context.Background()); err != nil {
 		log.Printf("failed to initialize auth indexes: %v", err)
@@ -101,7 +109,22 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb *redis.Client, cfg *config.Con
 	{
 		personnel.POST("", personnelCtrl.CreatePersonnel)
 		personnel.GET("", personnelCtrl.ListPersonnel)
+		personnel.GET("/:id", personnelCtrl.ListPersonnel) // Re-using List as "Get" logic for now if needed, but let's be explicit
+		personnel.PATCH("/:id", personnelCtrl.UpdatePersonnel)
+		personnel.DELETE("/:id", personnelCtrl.DeletePersonnel)
 		personnel.GET("/:id/compliance", personnelCtrl.CheckCompliance)
+
+		// Certificate Routes
+		personnel.POST("/:id/certificates", certCtrl.CreateCertificate)
+		personnel.GET("/:id/certificates", certCtrl.ListCertificates)
+		personnel.PATCH("/:id/certificates/:certId", certCtrl.UpdateCertificate)
+		personnel.DELETE("/:id/certificates/:certId", certCtrl.DeleteCertificate)
+	}
+
+	notifications := apiSecured.Group("/notifications")
+	{
+		notifications.GET("", notifCtrl.GetMyNotifications)
+		notifications.PATCH("/:id/read", notifCtrl.MarkAsRead)
 	}
 
 	// Phase 3 Initialization
@@ -113,8 +136,8 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb *redis.Client, cfg *config.Con
 	roomRepo.EnsureIndexes(context.Background())
 	roomAssignRepo.EnsureIndexes(context.Background())
 
-	vesselSvc := service.NewVesselService(vesselRepo, rdb)
-	roomSvc := service.NewRoomService(roomRepo, roomAssignRepo, vesselSvc)
+	vesselSvc := service.NewVesselService(vesselRepo, roomAssignRepo, rdb)
+	roomSvc := service.NewRoomService(roomRepo, roomAssignRepo, vesselSvc, compSvc)
 
 	vesselCtrl := controllers.NewVesselController(vesselSvc)
 	roomCtrl := controllers.NewRoomController(roomSvc)
@@ -124,9 +147,24 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb *redis.Client, cfg *config.Con
 	{
 		vessels.POST("", vesselCtrl.CreateVessel)
 		vessels.GET("", vesselCtrl.ListVessels)
+		vessels.GET("/:id", vesselCtrl.GetVessel)
+		vessels.PATCH("/:id", vesselCtrl.UpdateVessel)
+		vessels.DELETE("/:id", vesselCtrl.DeleteVessel)
+		
 		vessels.GET("/:id/pob", vesselCtrl.GetRealTimePOB)
+		vessels.GET("/:id/manifest", vesselCtrl.GetManifest)
 
+		// Room Routes within Vessel context
 		vessels.POST("/:vesselId/rooms", roomCtrl.CreateRoom)
+		vessels.GET("/:vesselId/rooms", roomCtrl.ListRooms)
 		vessels.POST("/:vesselId/rooms/assign", roomCtrl.AssignRoom)
+	}
+
+	rooms := apiSecured.Group("/rooms")
+	{
+		rooms.GET("/:id", roomCtrl.GetRoom)
+		rooms.PATCH("/:id", roomCtrl.UpdateRoom)
+		rooms.DELETE("/:id", roomCtrl.DeleteRoom)
+		rooms.GET("/:id/occupants", roomCtrl.GetRoomOccupants)
 	}
 }

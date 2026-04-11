@@ -64,6 +64,63 @@ func (c *VesselController) ListVessels(ctx *gin.Context) {
 	response.Success(ctx, http.StatusOK, "vessels retrieved successfully", vessels)
 }
 
+func (c *VesselController) GetVessel(ctx *gin.Context) {
+	idParam := ctx.Param("id")
+	id, err := bson.ObjectIDFromHex(idParam)
+	if err != nil {
+		response.Error(ctx, http.StatusBadRequest, "invalid vessel id format")
+		return
+	}
+
+	v, err := c.svc.GetByID(ctx.Request.Context(), id)
+	if err != nil {
+		response.Error(ctx, http.StatusInternalServerError, "failed to get vessel")
+		return
+	}
+
+	response.Success(ctx, http.StatusOK, "vessel retrieved successfully", v)
+}
+
+func (c *VesselController) UpdateVessel(ctx *gin.Context) {
+	idParam := ctx.Param("id")
+	id, err := bson.ObjectIDFromHex(idParam)
+	if err != nil {
+		response.Error(ctx, http.StatusBadRequest, "invalid vessel id format")
+		return
+	}
+
+	var req service.CreateVesselInput
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		response.Error(ctx, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	v, err := c.svc.Update(ctx.Request.Context(), id, req)
+	if err != nil {
+		response.Error(ctx, http.StatusInternalServerError, "failed to update vessel")
+		return
+	}
+
+	response.Success(ctx, http.StatusOK, "vessel updated successfully", v)
+}
+
+func (c *VesselController) DeleteVessel(ctx *gin.Context) {
+	idParam := ctx.Param("id")
+	id, err := bson.ObjectIDFromHex(idParam)
+	if err != nil {
+		response.Error(ctx, http.StatusBadRequest, "invalid vessel id format")
+		return
+	}
+
+	err = c.svc.Delete(ctx.Request.Context(), id)
+	if err != nil {
+		response.Error(ctx, http.StatusInternalServerError, "failed to delete vessel")
+		return
+	}
+
+	response.Success(ctx, http.StatusOK, "vessel deleted successfully", nil)
+}
+
 // GetRealTimePOB godoc
 // @Summary Get live POB for a vessel
 // @Description Fast redis-based query for real-time Personnel On Board
@@ -90,4 +147,21 @@ func (c *VesselController) GetRealTimePOB(ctx *gin.Context) {
 	}
 
 	response.Success(ctx, http.StatusOK, "real-time pob retrieved", gin.H{"pob": pob})
+}
+
+func (c *VesselController) GetManifest(ctx *gin.Context) {
+	idParam := ctx.Param("id")
+	id, err := bson.ObjectIDFromHex(idParam)
+	if err != nil {
+		response.Error(ctx, http.StatusBadRequest, "invalid vessel id format")
+		return
+	}
+
+	manifest, err := c.svc.GetManifest(ctx.Request.Context(), id)
+	if err != nil {
+		response.Error(ctx, http.StatusInternalServerError, "failed to fetch manifest")
+		return
+	}
+
+	response.Success(ctx, http.StatusOK, "vessel manifest retrieved", manifest)
 }

@@ -13,19 +13,22 @@ import (
 var (
 	ErrRoomCapacityExceeded = errors.New("room capacity exceeded")
 	ErrVesselCapacityBlocked = errors.New("cannot assign room: vessel pob capacity exceeded")
+	ErrPersonnelNonCompliant = errors.New("cannot assign room: personnel is non-compliant")
 )
 
 type RoomService struct {
 	roomRepo       *repository.RoomRepository
 	assignmentRepo *repository.RoomAssignmentRepository
 	vesselSvc      *VesselService
+	compSvc        *ComplianceService
 }
 
-func NewRoomService(r *repository.RoomRepository, a *repository.RoomAssignmentRepository, v *VesselService) *RoomService {
+func NewRoomService(r *repository.RoomRepository, a *repository.RoomAssignmentRepository, v *VesselService, c *ComplianceService) *RoomService {
 	return &RoomService{
 		roomRepo:       r,
 		assignmentRepo: a,
 		vesselSvc:      v,
+		compSvc:        c,
 	}
 }
 
@@ -89,7 +92,16 @@ func (s *RoomService) Assign(ctx context.Context, input AssignRoomInput) (*domai
 		return nil, ErrRoomCapacityExceeded
 	}
 
-	// 3. ATTEMPT to Increment POB (This throws HTTP 400 equivalent if vessel is full)
+	// 3. CHECK Compliance (Travel Blocking)
+	comp, err := s.compSvc.CheckCompliance(ctx, input.PersonnelID)
+	if err != nil {
+		return nil, err
+	}
+	if comp.Status != "Compliant" {
+		return nil, ErrPersonnelNonCompliant
+	}
+
+	// 4. ATTEMPT to Increment POB
 	err = s.vesselSvc.IncrementPOB(ctx, input.VesselID)
 	if err != nil {
 		if errors.Is(err, ErrVesselCapacityExceeded) {
@@ -122,4 +134,42 @@ func (s *RoomService) Assign(ctx context.Context, input AssignRoomInput) (*domai
 	}
 
 	return assignment, nil
+}
+
+func (s *RoomService) ListByVessel(ctx context.Context, vesselID bson.ObjectID) ([]domain.Room, error) {
+	return s.roomRepo.FindByVessel(ctx, vesselID)
+}
+
+func (s *RoomService) FindByID(ctx context.Context, id bson.ObjectID) (*domain.Room, error) {
+	return s.roomRepo.FindByID(ctx, id)
+}
+
+func (s *RoomService) Update(ctx context.Context, id bson.ObjectID, input CreateRoomInput) (*domain.Room, error) {
+	r, err := s.roomRepo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	r.Name = input.Name
+	r.Code = input.Code
+	r.Deck = input.Deck
+	r.Category = input.Category
+	r.Capacity = input.Capacity
+	r.UpdatedAt = time.Now()
+
+	err = s.roomRepo.Update(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	return r, nil
+}
+
+func (s *RoomService) Delete(ctx context.Context, id bson.ObjectID) error {
+	// For simplicity, we assume soft delete or direct delete if no active assignments
+	return s.roomRepo.Delete(ctx, id)
+}
+
+func (s *RoomService) GetOccupants(ctx context.Context, roomID bson.ObjectID) ([]domain.RoomAssignment, error) {
+	return s.assignmentRepo.FindActiveByRoom(ctx, roomID)
 }

@@ -55,7 +55,7 @@ func (r *PersonnelRepository) FindByID(ctx context.Context, id bson.ObjectID) (*
 }
 
 func (r *PersonnelRepository) FindAll(ctx context.Context) ([]domain.Personnel, error) {
-	cursor, err := r.collection.Find(ctx, bson.M{})
+	cursor, err := r.collection.Find(ctx, bson.M{"is_active": true})
 	if err != nil {
 		return nil, err
 	}
@@ -67,4 +67,37 @@ func (r *PersonnelRepository) FindAll(ctx context.Context) ([]domain.Personnel, 
 	}
 
 	return list, nil
+}
+
+func (r *PersonnelRepository) Update(ctx context.Context, p *domain.Personnel) error {
+	filter := bson.M{"_id": p.ID}
+	update := bson.M{"$set": p}
+	
+	result, err := r.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+	
+	if result.MatchedCount == 0 {
+		return ErrPersonnelNotFound
+	}
+	
+	return nil
+}
+
+func (r *PersonnelRepository) Delete(ctx context.Context, id bson.ObjectID) error {
+	// Soft delete
+	filter := bson.M{"_id": id}
+	update := bson.M{"$set": bson.M{"is_active": false}}
+	
+	result, err := r.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+	
+	if result.MatchedCount == 0 {
+		return ErrPersonnelNotFound
+	}
+	
+	return nil
 }

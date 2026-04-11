@@ -77,3 +77,39 @@ func (s *PersonnelService) FindAll(ctx context.Context) ([]domain.Personnel, err
 func (s *PersonnelService) FindByID(ctx context.Context, id bson.ObjectID) (*domain.Personnel, error) {
 	return s.repo.FindByID(ctx, id)
 }
+
+func (s *PersonnelService) Update(ctx context.Context, id bson.ObjectID, input CreatePersonnelInput) (*domain.Personnel, error) {
+	p, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, roleID := range input.OffshoreRoleIDs {
+		_, err := s.roleRepo.FindByID(ctx, roleID)
+		if err != nil {
+			return nil, ErrInvalidOffshoreRole
+		}
+	}
+
+	p.EmployeeNumber = input.EmployeeNumber
+	p.FirstName = input.FirstName
+	p.LastName = input.LastName
+	p.Email = input.Email
+	p.PhoneNumber = input.PhoneNumber
+	p.Nationality = input.Nationality
+	p.Company = input.Company
+	p.PrimaryDiscipline = input.PrimaryDiscipline
+	p.OffshoreRoleIDs = input.OffshoreRoleIDs
+	p.UpdatedAt = time.Now()
+
+	err = s.repo.Update(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+
+	return p, nil
+}
+
+func (s *PersonnelService) Delete(ctx context.Context, id bson.ObjectID) error {
+	return s.repo.Delete(ctx, id)
+}
