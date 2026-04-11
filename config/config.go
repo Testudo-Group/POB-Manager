@@ -4,7 +4,6 @@ import (
 	"log"
 	"os"
 	"strconv"
-
 	"github.com/joho/godotenv"
 )
 
@@ -12,6 +11,7 @@ type Config struct {
 	Port                  string
 	MongoURI              string
 	MongoDBName           string
+	RedisURI              string
 	JWTSecret             string
 	AccessTokenTTLMinutes int
 	RefreshTokenTTLHours  int
@@ -32,6 +32,7 @@ func Load() *Config {
 		Port:                  getEnv("PORT", "8080"),
 		MongoURI:              mongoURI,
 		MongoDBName:           getEnv("MONGO_DB_NAME", "pob_management"),
+		RedisURI:              getEnv("REDIS_URI", "redis://localhost:6379"),
 		JWTSecret:             getEnv("JWT_SECRET", "changeme"),
 		AccessTokenTTLMinutes: getEnvAsInt("ACCESS_TOKEN_TTL_MINUTES", 15),
 		RefreshTokenTTLHours:  getEnvAsInt("REFRESH_TOKEN_TTL_HOURS", 168),
