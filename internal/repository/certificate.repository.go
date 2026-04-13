@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/codingninja/pob-management/internal/domain"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -72,16 +73,16 @@ func (r *CertificateRepository) FindByPersonnelID(ctx context.Context, personnel
 func (r *CertificateRepository) Update(ctx context.Context, cert *domain.Certificate) error {
 	filter := bson.M{"_id": cert.ID}
 	update := bson.M{"$set": cert}
-	
+
 	result, err := r.collection.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return err
 	}
-	
+
 	if result.MatchedCount == 0 {
 		return ErrCertificateNotFound
 	}
-	
+
 	return nil
 }
 
@@ -90,10 +91,29 @@ func (r *CertificateRepository) Delete(ctx context.Context, id bson.ObjectID) er
 	if err != nil {
 		return err
 	}
-	
+
 	if result.DeletedCount == 0 {
 		return ErrCertificateNotFound
 	}
-	
+
 	return nil
+}
+
+func (r *CertificateRepository) FindExpiring(ctx context.Context, days int) ([]domain.Certificate, error) {
+	now := time.Now()
+	expiryThreshold := now.AddDate(0, 0, days)
+	filter := bson.M{
+		"expiry_date": bson.M{"$gte": now, "$lte": expiryThreshold},
+	}
+	cursor, err := r.collection.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var certs []domain.Certificate
+	if err := cursor.All(ctx, &certs); err != nil {
+		return nil, err
+	}
+	return certs, nil
 }
