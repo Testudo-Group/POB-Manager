@@ -9,16 +9,13 @@ import (
 	"github.com/codingninja/pob-management/internal/delivery/http/middleware"
 	"github.com/codingninja/pob-management/internal/repository"
 	"github.com/codingninja/pob-management/internal/service"
-	_ "github.com/codingninja/pob-management/docs" // Custom docs
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
+
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 func Setup(r *gin.Engine, db *mongo.Database, rdb *redis.Client, cfg *config.Config) {
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})

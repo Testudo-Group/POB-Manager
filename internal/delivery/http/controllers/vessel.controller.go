@@ -17,18 +17,6 @@ func NewVesselController(svc *service.VesselService) *VesselController {
 	return &VesselController{svc: svc}
 }
 
-// CreateVessel godoc
-// @Summary Create a new vessel
-// @Description Creates a physical vessel or installation to track
-// @Tags vessels
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param vessel body service.CreateVesselInput true "Vessel Details"
-// @Success 201 {object} map[string]interface{}
-// @Failure 400 {object} map[string]interface{}
-// @Failure 500 {object} map[string]interface{}
-// @Router /api/v1/vessels [post]
 func (c *VesselController) CreateVessel(ctx *gin.Context) {
 	var req service.CreateVesselInput
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -45,15 +33,6 @@ func (c *VesselController) CreateVessel(ctx *gin.Context) {
 	response.Success(ctx, http.StatusCreated, "vessel created successfully", v)
 }
 
-// ListVessels godoc
-// @Summary List all vessels
-// @Description Fetches a list of all vessels and installations
-// @Tags vessels
-// @Produce json
-// @Security BearerAuth
-// @Success 200 {object} map[string]interface{}
-// @Failure 500 {object} map[string]interface{}
-// @Router /api/v1/vessels [get]
 func (c *VesselController) ListVessels(ctx *gin.Context) {
 	vessels, err := c.svc.FindAll(ctx.Request.Context())
 	if err != nil {
@@ -121,17 +100,6 @@ func (c *VesselController) DeleteVessel(ctx *gin.Context) {
 	response.Success(ctx, http.StatusOK, "vessel deleted successfully", nil)
 }
 
-// GetRealTimePOB godoc
-// @Summary Get live POB for a vessel
-// @Description Fast redis-based query for real-time Personnel On Board
-// @Tags vessels
-// @Produce json
-// @Security BearerAuth
-// @Param id path string true "Vessel ID"
-// @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} map[string]interface{}
-// @Failure 500 {object} map[string]interface{}
-// @Router /api/v1/vessels/{id}/pob [get]
 func (c *VesselController) GetRealTimePOB(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := bson.ObjectIDFromHex(idParam)

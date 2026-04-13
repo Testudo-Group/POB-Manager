@@ -1,0 +1,1053 @@
+{
+  "info": {
+    "name": "POB Management API",
+    "description": "API for managing Personnel On Board, Vessels, Rooms, Certificates, and Compliance.\n\n## Authentication\nAll secured endpoints require a Bearer token in the `Authorization` header.\n\nUse `POST /api/v1/auth/login` or `POST /api/v1/auth/register` to obtain tokens.\n\n## Base URL\n`{{base_url}}` defaults to `http://localhost:8080`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "vessel_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "room_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "personnel_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "certificate_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "notification_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "role_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            },
+            "description": "Returns the health status of the API."
+          },
+          "response": [
+            {
+              "name": "200 – Healthy",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"status\": \"ok\"\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Basic health check endpoint."
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register Organization",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token', json.data.tokens.access_token);",
+                  "    pm.collectionVariables.set('refresh_token', json.data.tokens.refresh_token);",
+                  "    pm.collectionVariables.set('user_id', json.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"organization_name\": \"Offshore Corp\",\n  \"organization_phone\": \"+44 123 456 7890\",\n  \"organization_address\": \"123 Oil Rig Lane, Aberdeen\",\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe\",\n  \"phone_number\": \"+44 987 654 3210\",\n  \"email\": \"john.doe@offshorecorp.com\",\n  \"password\": \"securePwd123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "register"]
+            },
+            "description": "Register a new organization and its system admin user. Returns auth tokens on success.\n\n**Auto-saves:** `access_token`, `refresh_token`, and `user_id` to collection variables."
+          },
+          "response": [
+            {
+              "name": "201 – Registered",
+              "status": "Created",
+              "code": 201,
+              "body": "{\n  \"status\": \"success\",\n  \"message\": \"organization registered successfully\",\n  \"data\": {\n    \"user\": {\n      \"id\": \"...\",\n      \"organization_id\": \"...\",\n      \"first_name\": \"John\",\n      \"last_name\": \"Doe\",\n      \"email\": \"john.doe@offshorecorp.com\",\n      \"role\": \"system_admin\",\n      \"is_active\": true\n    },\n    \"tokens\": {\n      \"access_token\": \"...\",\n      \"refresh_token\": \"...\",\n      \"access_token_expires_at\": \"...\",\n      \"refresh_token_expires_at\": \"...\"\n    }\n  }\n}"
+            },
+            {
+              "name": "409 – Conflict",
+              "status": "Conflict",
+              "code": 409,
+              "body": "{\n  \"status\": \"error\",\n  \"message\": \"email already exists\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token', json.data.tokens.access_token);",
+                  "    pm.collectionVariables.set('refresh_token', json.data.tokens.refresh_token);",
+                  "    pm.collectionVariables.set('user_id', json.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.doe@offshorecorp.com\",\n  \"password\": \"securePwd123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "login"]
+            },
+            "description": "Authenticate with email and password. Returns access and refresh tokens.\n\n**Auto-saves:** `access_token`, `refresh_token`, and `user_id` to collection variables."
+          },
+          "response": [
+            {
+              "name": "200 – Success",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"status\": \"success\",\n  \"message\": \"login successful\",\n  \"data\": {\n    \"user\": { \"id\": \"...\", \"email\": \"...\" },\n    \"tokens\": { \"access_token\": \"...\", \"refresh_token\": \"...\" }\n  }\n}"
+            },
+            {
+              "name": "401 – Invalid Credentials",
+              "status": "Unauthorized",
+              "code": 401,
+              "body": "{\n  \"status\": \"error\",\n  \"message\": \"invalid credentials\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token', json.data.tokens.access_token);",
+                  "    pm.collectionVariables.set('refresh_token', json.data.tokens.refresh_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "refresh"]
+            },
+            "description": "Use a valid refresh token to obtain a new access/refresh token pair.\n\n**Auto-saves:** `access_token` and `refresh_token` to collection variables."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "logout"]
+            },
+            "description": "Invalidates the current user's refresh token. Requires authentication."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Current User (Me)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "me"]
+            },
+            "description": "Returns the currently authenticated user's profile."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile (Me)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Jane\",\n  \"last_name\": \"Doe\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "me"]
+            },
+            "description": "Update the authenticated user's first and last name."
+          },
+          "response": []
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"securePwd123\",\n  \"new_password\": \"newSecurePwd456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/change-password",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "change-password"]
+            },
+            "description": "Change the authenticated user's password. Requires current password verification. Invalidates existing refresh tokens."
+          },
+          "response": []
+        }
+      ],
+      "description": "Authentication endpoints: register, login, token refresh, logout, and profile management."
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Create User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('user_id', json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Sarah\",\n  \"last_name\": \"Mitchell\",\n  \"phone_number\": \"+44 111 222 3333\",\n  \"email\": \"sarah.mitchell@offshorecorp.com\",\n  \"password\": \"userPass2024\",\n  \"role\": \"planner\",\n  \"vessel_id\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users"]
+            },
+            "description": "Create a new user within the organization. Requires `assign_user_role` permission.\n\n**Valid Roles:** `system_admin`, `oim`, `safety_admin`, `planner`, `activity_owner`, `personnel`"
+          },
+          "response": []
+        },
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/users",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users"]
+            },
+            "description": "List all users within the authenticated user's organization. Requires `list_users` permission."
+          },
+          "response": []
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "{{user_id}}"]
+            },
+            "description": "Fetch a specific user by their ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Sarah\",\n  \"last_name\": \"Mitchell-Jones\",\n  \"phone_number\": \"+44 111 222 4444\",\n  \"email\": \"sarah.jones@offshorecorp.com\",\n  \"vessel_id\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "{{user_id}}"]
+            },
+            "description": "Update a user's profile details. Requires `update_user` permission."
+          },
+          "response": []
+        },
+        {
+          "name": "Update User Role",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"oim\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/{{user_id}}/role",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "{{user_id}}", "role"]
+            },
+            "description": "Assign a new role to a user. Requires `assign_user_role` permission.\n\n**Valid Roles:** `system_admin`, `oim`, `safety_admin`, `planner`, `activity_owner`, `personnel`"
+          },
+          "response": []
+        },
+        {
+          "name": "Deactivate User",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "{{user_id}}"]
+            },
+            "description": "Deactivate (soft-delete) a user. Requires `deactivate_user` permission."
+          },
+          "response": []
+        }
+      ],
+      "description": "User management endpoints. All require authentication and appropriate RBAC permissions."
+    },
+    {
+      "name": "Positions (Offshore Roles)",
+      "item": [
+        {
+          "name": "Create Position",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('role_id', json.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Crane Operator\",\n  \"code\": \"CRANE-OP\",\n  \"description\": \"Operates fixed and mobile cranes on the installation\",\n  \"type\": \"Core\",\n  \"required_certificate_types\": [],\n  \"requires_room\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/positions",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "positions"]
+            },
+            "description": "Create a new offshore role / position.\n\n**Type:** `Core` or `Flexible`"
+          },
+          "response": []
+        },
+        {
+          "name": "List Positions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/positions",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "positions"]
+            },
+            "description": "List all defined offshore roles / positions."
+          },
+          "response": []
+        }
+      ],
+      "description": "Offshore roles (positions) define job functions and their certificate requirements."
+    },
+    {
+      "name": "Personnel",
+      "item": [
+        {
+          "name": "Create Personnel",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('personnel_id', json.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employee_number\": \"EMP-001\",\n  \"first_name\": \"Mike\",\n  \"last_name\": \"Henderson\",\n  \"email\": \"mike.henderson@contractor.com\",\n  \"phone_number\": \"+44 555 666 7777\",\n  \"nationality\": \"British\",\n  \"company\": \"Offshore Contractors Ltd\",\n  \"primary_discipline\": \"Mechanical Engineering\",\n  \"offshore_role_ids\": []\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/personnel",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "personnel"]
+            },
+            "description": "Register a new personnel member. Provide `offshore_role_ids` as an array of valid role ObjectIDs."
+          },
+          "response": []
+        },
+        {
+          "name": "List Personnel",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/personnel",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "personnel"]
+            },
+            "description": "List all registered personnel."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Personnel",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employee_number\": \"EMP-001\",\n  \"first_name\": \"Michael\",\n  \"last_name\": \"Henderson\",\n  \"email\": \"michael.henderson@contractor.com\",\n  \"phone_number\": \"+44 555 666 8888\",\n  \"nationality\": \"British\",\n  \"company\": \"Offshore Contractors Ltd\",\n  \"primary_discipline\": \"Mechanical Engineering\",\n  \"offshore_role_ids\": []\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/personnel/{{personnel_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "personnel", "{{personnel_id}}"]
+            },
+            "description": "Update an existing personnel member's details."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Personnel",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/personnel/{{personnel_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "personnel", "{{personnel_id}}"]
+            },
+            "description": "Delete a personnel member."
+          },
+          "response": []
+        },
+        {
+          "name": "Check Compliance",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/personnel/{{personnel_id}}/compliance",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "personnel", "{{personnel_id}}", "compliance"]
+            },
+            "description": "Check a personnel member's certification compliance against their assigned offshore roles. Returns compliance status: `Compliant`, `Non-Compliant`, or details of missing / expired certificates."
+          },
+          "response": []
+        }
+      ],
+      "description": "Personnel management: CRUD and compliance checks for offshore workers."
+    },
+    {
+      "name": "Certificates",
+      "item": [
+        {
+          "name": "Create Certificate",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('certificate_id', json.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"certificate_type\": \"BOSIET\",\n  \"certificate_number\": \"CERT-2024-001\",\n  \"issued_by\": \"OPITO Training Centre\",\n  \"issued_at\": \"2024-01-15T00:00:00Z\",\n  \"expires_at\": \"2028-01-15T00:00:00Z\",\n  \"document_url\": \"https://docs.example.com/cert-001.pdf\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/personnel/{{personnel_id}}/certificates",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "personnel", "{{personnel_id}}", "certificates"]
+            },
+            "description": "Add a certificate to a personnel member. The `certificate_type` must match a valid certificate type code.\n\nStatus is auto-calculated: `Valid`, `Expiring` (< 30 days), or `Expired`."
+          },
+          "response": []
+        },
+        {
+          "name": "List Certificates",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/personnel/{{personnel_id}}/certificates",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "personnel", "{{personnel_id}}", "certificates"]
+            },
+            "description": "List all certificates belonging to a specific personnel member."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Certificate",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"certificate_type\": \"BOSIET\",\n  \"certificate_number\": \"CERT-2024-001-RENEWED\",\n  \"issued_by\": \"OPITO Training Centre\",\n  \"issued_at\": \"2024-06-01T00:00:00Z\",\n  \"expires_at\": \"2028-06-01T00:00:00Z\",\n  \"document_url\": \"https://docs.example.com/cert-001-renewed.pdf\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/personnel/{{personnel_id}}/certificates/{{certificate_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "personnel", "{{personnel_id}}", "certificates", "{{certificate_id}}"]
+            },
+            "description": "Update an existing certificate's details (e.g., after renewal)."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Certificate",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/personnel/{{personnel_id}}/certificates/{{certificate_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "personnel", "{{personnel_id}}", "certificates", "{{certificate_id}}"]
+            },
+            "description": "Delete a certificate from a personnel member's record."
+          },
+          "response": []
+        }
+      ],
+      "description": "Certificate management for personnel. Certificates are scoped under a personnel member."
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Get My Notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/notifications",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "notifications"]
+            },
+            "description": "Fetch all notifications for the currently authenticated user. Includes certificate expiry reminders and compliance alerts."
+          },
+          "response": []
+        },
+        {
+          "name": "Mark Notification as Read",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/notifications/{{notification_id}}/read",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "notifications", "{{notification_id}}", "read"]
+            },
+            "description": "Mark a specific notification as read."
+          },
+          "response": []
+        }
+      ],
+      "description": "System notifications, including certificate expiry reminders."
+    },
+    {
+      "name": "Vessels",
+      "item": [
+        {
+          "name": "Create Vessel",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('vessel_id', json.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Highland Pioneer\",\n  \"code\": \"HP-001\",\n  \"type\": \"FPSO\",\n  \"location\": \"North Sea, Block 22/30a\",\n  \"pob_capacity\": 150,\n  \"minimum_safe_pob_capacity\": 30\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/vessels",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "vessels"]
+            },
+            "description": "Create a new vessel or installation.\n\n**Vessel Types:** `FPSO`, `Platform`, `Jack-Up`, `Semi-Sub`, `Drillship`\n\n`pob_capacity` sets the hard limit for room assignments. A Redis counter is initialized at 0."
+          },
+          "response": []
+        },
+        {
+          "name": "List Vessels",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/vessels",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "vessels"]
+            },
+            "description": "List all vessels and installations."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Vessel by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/vessels/{{vessel_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "vessels", "{{vessel_id}}"]
+            },
+            "description": "Fetch a single vessel by its ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Vessel",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Highland Pioneer II\",\n  \"code\": \"HP-002\",\n  \"type\": \"FPSO\",\n  \"location\": \"North Sea, Block 22/30b\",\n  \"pob_capacity\": 200,\n  \"minimum_safe_pob_capacity\": 40\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/vessels/{{vessel_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "vessels", "{{vessel_id}}"]
+            },
+            "description": "Update vessel details."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Vessel",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/vessels/{{vessel_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "vessels", "{{vessel_id}}"]
+            },
+            "description": "Delete a vessel."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Real-Time POB",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/vessels/{{vessel_id}}/pob",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "vessels", "{{vessel_id}}", "pob"]
+            },
+            "description": "Get the live Personnel On Board count for a vessel. This is a fast Redis-based query — not a database scan."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Vessel Manifest",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/vessels/{{vessel_id}}/manifest",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "vessels", "{{vessel_id}}", "manifest"]
+            },
+            "description": "Get the full active room assignment manifest for a vessel — all currently assigned personnel."
+          },
+          "response": []
+        }
+      ],
+      "description": "Vessel and installation management with real-time POB tracking."
+    },
+    {
+      "name": "Rooms",
+      "item": [
+        {
+          "name": "Create Room",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('room_id', json.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Cabin A-201\",\n  \"code\": \"A-201\",\n  \"deck\": \"A-Deck\",\n  \"category\": \"Dedicated\",\n  \"capacity\": 2\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/vessels/{{vessel_id}}/rooms",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "vessels", "{{vessel_id}}", "rooms"]
+            },
+            "description": "Create a room within a vessel.\n\n**Category:** `Dedicated` (for core crew) or `Transient` (for flexible / visiting)\n\n`capacity` = number of beds in the room."
+          },
+          "response": []
+        },
+        {
+          "name": "List Rooms by Vessel",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/vessels/{{vessel_id}}/rooms",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "vessels", "{{vessel_id}}", "rooms"]
+            },
+            "description": "List all rooms belonging to a specific vessel."
+          },
+          "response": []
+        },
+        {
+          "name": "Assign Personnel to Room",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"room_id\": \"{{room_id}}\",\n  \"personnel_id\": \"{{personnel_id}}\",\n  \"type\": \"Core\",\n  \"offshore_role_id\": \"{{role_id}}\",\n  \"starts_at\": \"2024-06-01T06:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/vessels/{{vessel_id}}/rooms/assign",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "vessels", "{{vessel_id}}", "rooms", "assign"]
+            },
+            "description": "Assign a personnel member to a room bed on a vessel.\n\n**Enforcement chain:**\n1. Room capacity check\n2. Personnel compliance check (cert blocking)\n3. Vessel POB capacity check (Redis atomic increment)\n\n**Type:** `Core` (requires `offshore_role_id`) or `Flexible` (requires `activity_id` and `ends_at`)"
+          },
+          "response": [
+            {
+              "name": "400 – Room Capacity Exceeded",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\n  \"status\": \"error\",\n  \"message\": \"room capacity exceeded\"\n}"
+            },
+            {
+              "name": "400 – Non-Compliant Personnel",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\n  \"status\": \"error\",\n  \"message\": \"cannot assign room: personnel is non-compliant\"\n}"
+            },
+            {
+              "name": "400 – Vessel POB Exceeded",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\n  \"status\": \"error\",\n  \"message\": \"cannot assign room: vessel pob capacity exceeded\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Room by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/rooms/{{room_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "rooms", "{{room_id}}"]
+            },
+            "description": "Fetch a specific room by its ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Room",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Cabin A-201 (Renovated)\",\n  \"code\": \"A-201\",\n  \"deck\": \"A-Deck\",\n  \"category\": \"Dedicated\",\n  \"capacity\": 4\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/rooms/{{room_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "rooms", "{{room_id}}"]
+            },
+            "description": "Update room details."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Room",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/rooms/{{room_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "rooms", "{{room_id}}"]
+            },
+            "description": "Delete a room."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Room Occupants",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/rooms/{{room_id}}/occupants",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "rooms", "{{room_id}}", "occupants"]
+            },
+            "description": "List all active room assignments (current occupants) for a specific room."
+          },
+          "response": []
+        }
+      ],
+      "description": "Room management and personnel-to-room assignment with capacity enforcement."
+    }
+  ]
+}
