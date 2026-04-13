@@ -29,7 +29,7 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb *redis.Client, cfg *config.Con
 	authController := controllers.NewAuthController(authService)
 	userController := controllers.NewUserController(userService)
 	authMiddleware := middleware.NewAuthMiddleware(tokenManager)
-	
+
 	// Phase 2 Initialization
 	certTypeRepo := repository.NewCertificateTypeRepository(db)
 	roleRepo := repository.NewOffshoreRoleRepository(db)
@@ -49,7 +49,7 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb *redis.Client, cfg *config.Con
 	personnelSvc := service.NewPersonnelService(personnelRepo, roleRepo)
 	compSvc := service.NewComplianceService(personnelRepo, roleRepo, certRepo, certTypeRepo)
 	notifSvc := service.NewNotificationService(notifRepo)
-	
+
 	roleCtrl := controllers.NewOffshoreRoleController(roleSvc)
 	personnelCtrl := controllers.NewPersonnelController(personnelSvc, compSvc)
 	certCtrl := controllers.NewCertificateController(certSvc)
@@ -95,7 +95,7 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb *redis.Client, cfg *config.Con
 	// Phase 2 Routes (Authenticated)
 	apiSecured := api.Group("")
 	apiSecured.Use(authMiddleware.RequireAuth())
-	
+
 	roles := apiSecured.Group("/positions")
 	{
 		roles.POST("", roleCtrl.CreateRole)
@@ -106,7 +106,7 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb *redis.Client, cfg *config.Con
 	{
 		personnel.POST("", personnelCtrl.CreatePersonnel)
 		personnel.GET("", personnelCtrl.ListPersonnel)
-		personnel.GET("/:id", personnelCtrl.ListPersonnel) // Re-using List as "Get" logic for now if needed, but let's be explicit
+		personnel.GET("/:id", personnelCtrl.ListPersonnel)
 		personnel.PATCH("/:id", personnelCtrl.UpdatePersonnel)
 		personnel.DELETE("/:id", personnelCtrl.DeletePersonnel)
 		personnel.GET("/:id/compliance", personnelCtrl.CheckCompliance)
@@ -147,14 +147,14 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb *redis.Client, cfg *config.Con
 		vessels.GET("/:id", vesselCtrl.GetVessel)
 		vessels.PATCH("/:id", vesselCtrl.UpdateVessel)
 		vessels.DELETE("/:id", vesselCtrl.DeleteVessel)
-		
+
 		vessels.GET("/:id/pob", vesselCtrl.GetRealTimePOB)
 		vessels.GET("/:id/manifest", vesselCtrl.GetManifest)
 
 		// Room Routes within Vessel context
-		vessels.POST("/:vesselId/rooms", roomCtrl.CreateRoom)
-		vessels.GET("/:vesselId/rooms", roomCtrl.ListRooms)
-		vessels.POST("/:vesselId/rooms/assign", roomCtrl.AssignRoom)
+		vessels.POST("/:id/rooms", roomCtrl.CreateRoom)
+		vessels.GET("/:id/rooms", roomCtrl.ListRooms)
+		vessels.POST("/:id/rooms/assign", roomCtrl.AssignRoom)
 	}
 
 	rooms := apiSecured.Group("/rooms")
@@ -163,5 +163,208 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb *redis.Client, cfg *config.Con
 		rooms.PATCH("/:id", roomCtrl.UpdateRoom)
 		rooms.DELETE("/:id", roomCtrl.DeleteRoom)
 		rooms.GET("/:id/occupants", roomCtrl.GetRoomOccupants)
+	}
+
+	// ==================== PHASE 4: ROLES & ROTATION SCHEDULING ====================
+
+	// Phase 4 Initialization
+	rotationScheduleRepo := repository.NewRotationScheduleRepository(db)
+	roleAssignmentRepo := repository.NewRoleAssignmentRepository(db)
+	backToBackPairRepo := repository.NewBackToBackPairRepository(db)
+
+	rotationScheduleRepo.EnsureIndexes(context.Background())
+	roleAssignmentRepo.EnsureIndexes(context.Background())
+	backToBackPairRepo.EnsureIndexes(context.Background())
+
+	rotationSvc := service.NewRotationService(
+		rotationScheduleRepo,
+		roleAssignmentRepo,
+		backToBackPairRepo,
+		roleRepo,
+		personnelRepo,
+		roomAssignRepo,
+	)
+
+	rotationCtrl := controllers.NewRotationController(rotationSvc)
+
+	// Rotation Schedule Routes
+	rotationSchedules := apiSecured.Group("/rotation-schedules")
+	{
+		rotationSchedules.POST("", rotationCtrl.CreateSchedule)
+		rotationSchedules.GET("", rotationCtrl.GetSchedules)
+	}
+
+	// Role Assignment Routes
+	roleAssignments := apiSecured.Group("/role-assignments")
+	{
+		roleAssignments.POST("/assign", rotationCtrl.AssignRole)
+		roleAssignments.POST("/:id/end", rotationCtrl.EndAssignment)
+	}
+
+	// Vessel Manning (add to existing vessels group)
+	vessels.GET("/:id/manning", rotationCtrl.GetVesselManning)
+
+	// Back-to-Back Pairs
+	backToBack := apiSecured.Group("/back-to-back-pairs")
+	{
+		backToBack.POST("", rotationCtrl.CreateBackToBackPair)
+		backToBack.GET("", rotationCtrl.GetBackToBackPairs)
+	}
+
+	// Rotation Calculation
+	apiSecured.POST("/rotation/calculate", rotationCtrl.CalculateNextRotation)
+
+	// ==================== PHASE 5: ACTIVITY MANAGEMENT ====================
+
+	// Phase 5 Initialization
+	activityRepo := repository.NewActivityRepository(db)
+	requirementRepo := repository.NewActivityRequirementRepository(db)
+	assignmentRepo := repository.NewActivityAssignmentRepository(db)
+
+	activityRepo.EnsureIndexes(context.Background())
+	requirementRepo.EnsureIndexes(context.Background())
+	assignmentRepo.EnsureIndexes(context.Background())
+
+	activitySvc := service.NewActivityService(
+		activityRepo,
+		requirementRepo,
+		assignmentRepo,
+		roleRepo,
+		personnelRepo,
+		roleAssignmentRepo,
+	)
+
+	activityCtrl := controllers.NewActivityController(activitySvc)
+
+	// Activity Routes
+	activities := apiSecured.Group("/activities")
+	{
+		activities.POST("", activityCtrl.CreateActivity)
+		activities.GET("", activityCtrl.ListActivities)
+		activities.GET("/:id", activityCtrl.GetActivity)
+		activities.GET("/gantt", activityCtrl.GetGanttData)
+		activities.GET("/conflicts", activityCtrl.CheckConflicts)
+		activities.GET("/queue", activityCtrl.GetPendingQueue)
+		activities.POST("/submit", activityCtrl.SubmitForApproval)
+		activities.POST("/approve", activityCtrl.ApproveActivity)
+		activities.POST("/reject", activityCtrl.RejectActivity)
+		activities.GET("/:id/requirements", activityCtrl.GetRequirements)
+		activities.GET("/:id/assignments", activityCtrl.GetAssignments)
+		activities.POST("/assign", activityCtrl.AssignPersonnel)
+		activities.DELETE("/:id", activityCtrl.DeleteActivity)
+	}
+
+	// ==================== PHASE 6: TRAVEL & MOBILIZATION ====================
+
+	// Phase 6 Initialization
+	transportRepo := repository.NewTransportRepository(db)
+	travelScheduleRepo := repository.NewTravelScheduleRepository(db)
+	travelAssignmentRepo := repository.NewTravelAssignmentRepository(db)
+
+	transportRepo.EnsureIndexes(context.Background())
+	travelScheduleRepo.EnsureIndexes(context.Background())
+	travelAssignmentRepo.EnsureIndexes(context.Background())
+
+	travelSvc := service.NewTravelService(
+		transportRepo,
+		travelScheduleRepo,
+		travelAssignmentRepo,
+		activityRepo,
+		personnelRepo,
+		compSvc,
+	)
+
+	travelCtrl := controllers.NewTravelController(travelSvc)
+
+	// Transport Routes
+	transports := apiSecured.Group("/transports")
+	{
+		transports.POST("", travelCtrl.CreateTransport)
+		transports.GET("", travelCtrl.ListTransports)
+		transports.GET("/:id", travelCtrl.GetTransport)
+		transports.PATCH("/:id", travelCtrl.UpdateTransport)
+		transports.DELETE("/:id", travelCtrl.DeleteTransport)
+	}
+
+	// Travel Schedule Routes
+	travel := apiSecured.Group("/travel")
+	{
+		travel.POST("/schedules", travelCtrl.CreateTravelSchedule)
+		travel.GET("/schedules", travelCtrl.ListUpcomingSchedules)
+		travel.GET("/schedules/:id", travelCtrl.GetTravelSchedule)
+		travel.GET("/schedules/:id/assignments", travelCtrl.GetTripAssignments)
+		travel.POST("/match-activities", travelCtrl.MatchActivities)
+		travel.POST("/assign", travelCtrl.AssignPersonnelToTrip)
+		travel.GET("/alerts", travelCtrl.GetUtilizationAlerts)
+		travel.POST("/consolidate", travelCtrl.SuggestConsolidation)
+		travel.GET("/my-travels", travelCtrl.GetMyTravels)
+	}
+
+	// ==================== PHASE 7: MINIMUM MANNING MODE ====================
+
+	// Phase 7 Initialization
+	mmRepo := repository.NewMinimumManningRepository(db)
+	mmRepo.EnsureIndexes(context.Background())
+
+	mmSvc := service.NewMinimumManningService(
+		mmRepo,
+		vesselRepo,
+		activityRepo,
+		personnelRepo,
+		roleAssignmentRepo,
+		roleRepo,
+		notifSvc,
+	)
+
+	mmCtrl := controllers.NewMinimumManningController(mmSvc)
+
+	// Minimum Manning Routes
+	manning := apiSecured.Group("/minimum-manning")
+	{
+		manning.POST("/activate", mmCtrl.Activate)
+		manning.POST("/deactivate", mmCtrl.Deactivate)
+		manning.GET("/active", mmCtrl.GetActiveEvent)
+		manning.GET("/history", mmCtrl.GetEventHistory)
+	}
+
+	// ==================== PHASE 8: DASHBOARD & REPORTING ====================
+
+	// Dashboard Service
+	dashboardSvc := service.NewDashboardService(
+		vesselRepo,
+		activityRepo,
+		certRepo,
+		transportRepo,
+		travelScheduleRepo,
+		travelAssignmentRepo,
+		personnelRepo,
+		roomAssignRepo,
+		vesselSvc,
+	)
+	dashboardCtrl := controllers.NewDashboardController(dashboardSvc)
+
+	// Report Service
+	reportSvc := service.NewReportService(
+		vesselRepo,
+		activityRepo,
+		personnelRepo,
+		roomAssignRepo,
+		vesselSvc,
+	)
+	reportCtrl := controllers.NewReportController(reportSvc)
+
+	// Dashboard Routes
+	dashboard := apiSecured.Group("/dashboard")
+	{
+		dashboard.GET("", dashboardCtrl.GetDashboard)
+	}
+
+	// Report Routes
+	reports := apiSecured.Group("/reports")
+	{
+		reports.GET("/daily", reportCtrl.DailyPOBReport)
+		reports.GET("/historical", reportCtrl.HistoricalPOBReport)
+		reports.GET("/export/pdf", reportCtrl.ExportPDF)
+		reports.GET("/export/csv", reportCtrl.ExportCSV)
 	}
 }
