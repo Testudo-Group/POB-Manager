@@ -19,6 +19,7 @@ A backend API for managing personnel presence, room allocation, activity plannin
 | File Storage | AWS S3 (certificate PDFs)                        |
 | Hosting      | AWS / Azure                                      |
 | Containers   | Docker                                           |
+| Docs         | Postman Collection                               |
 
 ---
 
@@ -28,6 +29,29 @@ A backend API for managing personnel presence, room allocation, activity plannin
 - The primary deliverable is a production-ready REST API.
 - Frontend, mobile apps, and third-party integrations are out of scope for the initial build.
 - Cost optimization and AI-assisted planning are deferred until the core operational flows are stable.
+
+---
+
+## API Documentation
+
+API documentation is provided as a **Postman Collection** located at:
+
+```
+docs/POB_Management_API.postman_collection.json
+```
+
+### Features
+- All 35+ endpoints organized into 8 folders (Auth, Users, Positions, Personnel, Certificates, Notifications, Vessels, Rooms)
+- Collection-level Bearer auth with automatic token management
+- Auto-save test scripts — Login/Register responses automatically populate tokens and entity IDs
+- Example request bodies with realistic offshore industry data
+- Per-endpoint descriptions including RBAC permissions and enforcement rules
+
+### Import into Postman
+1. Open Postman
+2. Click **File → Import**
+3. Select `docs/POB_Management_API.postman_collection.json`
+4. Update the `base_url` collection variable if your server is not running on `http://localhost:8080`
 
 ---
 
@@ -63,32 +87,32 @@ A backend API for managing personnel presence, room allocation, activity plannin
 
 ## Development Phases
 
-### Phase 1 — Foundation
+### ✅ Phase 1 — Foundation (Complete)
 
-- Go project scaffold (Clean Architecture)
-- MongoDB + Redis connection
-- Environment config (.env, config loader)
-- JWT + Refresh Token auth system
-- RBAC middleware (6 roles)
-- User management (CRUD)
-- MongoDB indexes and bootstrap setup
+- [x] Go project scaffold (Clean Architecture)
+- [x] MongoDB + Redis connection
+- [x] Environment config (.env, config loader)
+- [x] JWT + Refresh Token auth system
+- [x] RBAC middleware (6 roles, 100+ permissions)
+- [x] User management (CRUD)
+- [x] MongoDB indexes and bootstrap setup
 
-### Phase 2 — Personnel & Compliance
+### ✅ Phase 2 — Personnel & Compliance (Complete)
 
-- Personnel profile management
-- Certificate management (BOSIET, DPR Offshore Permit, Scaffolding, role-specific)
-- Compliance auto-validation engine
-- Expiry reminder system (6 months, 4 months, 1 month before expiry)
-- Travel blocking for non-compliant personnel
-- Email + in-app alert dispatch
+- [x] Personnel profile management (CRUD)
+- [x] Certificate management (BOSIET, DPR Offshore Permit, Scaffolding, role-specific)
+- [x] Compliance auto-validation engine
+- [x] Expiry reminder system (6 months, 4 months, 1 month before expiry)
+- [x] Travel blocking for non-compliant personnel
+- [x] In-app notification system + email dispatch stub
 
-### Phase 3 — Vessel & Room Management
+### ✅ Phase 3 — Vessel & Room Management (Complete)
 
-- Vessel setup (primary + secondary vessel)
-- POB cap configuration per vessel
-- Room management (create, assign, track)
-- Real-time POB count via Redis
-- Overshoot detection and alerting
+- [x] Vessel setup (primary + secondary vessel)
+- [x] POB cap configuration per vessel
+- [x] Room management (create, assign, track)
+- [x] Real-time POB count via Redis
+- [x] Overshoot detection and hard blocking
 
 ### Phase 4 — Roles & Rotation
 
@@ -139,9 +163,9 @@ A backend API for managing personnel presence, room allocation, activity plannin
 
 This is the lowest-rework backend delivery order based on feature dependencies:
 
-1. Phase 1 — Foundation
-2. Phase 2 — Personnel & Compliance
-3. Phase 3 — Vessel & Room Management
+1. ~~Phase 1 — Foundation~~ ✅
+2. ~~Phase 2 — Personnel & Compliance~~ ✅
+3. ~~Phase 3 — Vessel & Room Management~~ ✅
 4. Phase 4 — Roles & Rotation
 5. Phase 5 — Activity Management
 6. Phase 6 — Travel & Mobilization
@@ -167,7 +191,7 @@ All routes are prefixed with `/api/v1`
 
 | Method | Endpoint           | Description                           | Access        |
 | ------ | ------------------ | ------------------------------------- | ------------- |
-| POST   | `/register`        | Register a new user                   | Public        |
+| POST   | `/register`        | Register a new organization + admin   | Public        |
 | POST   | `/login`           | Login, returns access + refresh token | Public        |
 | POST   | `/refresh`         | Refresh access token                  | Public        |
 | POST   | `/logout`          | Invalidate refresh token              | Authenticated |
@@ -181,6 +205,7 @@ All routes are prefixed with `/api/v1`
 
 | Method | Endpoint    | Description                | Access    |
 | ------ | ----------- | -------------------------- | --------- |
+| POST   | `/`         | Create user in org         | Sys Admin |
 | GET    | `/`         | List all users             | Sys Admin |
 | GET    | `/:id`      | Get user by ID             | Sys Admin |
 | PATCH  | `/:id`      | Update user                | Sys Admin |
@@ -189,171 +214,159 @@ All routes are prefixed with `/api/v1`
 
 ---
 
-### Vessels — `/api/v1/vessels`
+### Positions (Offshore Roles) — `/api/v1/positions`
 
-| Method | Endpoint               | Description                     | Access                  |
-| ------ | ---------------------- | ------------------------------- | ----------------------- |
-| POST   | `/`                    | Create vessel or installation   | Sys Admin               |
-| GET    | `/`                    | List all vessels                | Authenticated           |
-| GET    | `/:id`                 | Get vessel details              | Authenticated           |
-| PATCH  | `/:id`                 | Update vessel info              | Sys Admin               |
-| DELETE | `/:id`                 | Remove vessel                   | Sys Admin               |
-| GET    | `/:id/pob`             | Real-time POB count (Redis)     | Authenticated           |
-| GET    | `/:id/capacity`        | POB capacity status             | Authenticated           |
-| PATCH  | `/:id/pob-cap`         | Set or update POB cap           | Sys Admin               |
-| GET    | `/:id/manifest`        | Full POB manifest snapshot      | Planner, OIM, Sys Admin |
-
----
-
-### Rooms — `/api/v1/vessels/:vesselId/rooms`
-
-| Method | Endpoint         | Description                | Access             |
-| ------ | ---------------- | -------------------------- | ------------------ |
-| POST   | `/`              | Create a room              | Sys Admin          |
-| GET    | `/`              | List all rooms on vessel   | Authenticated      |
-| GET    | `/:id`           | Get room details           | Authenticated      |
-| PATCH  | `/:id`           | Update room info           | Sys Admin          |
-| DELETE | `/:id`           | Delete room                | Sys Admin          |
-| GET    | `/:id/occupants` | Get current room occupants | Planner, Sys Admin |
-
----
-
-### Offshore Roles — `/api/v1/roles`
-
-| Method | Endpoint            | Description                     | Access             |
-| ------ | ------------------- | ------------------------------- | ------------------ |
-| POST   | `/`                 | Create offshore role            | Sys Admin          |
-| GET    | `/`                 | List all roles                  | Authenticated      |
-| GET    | `/:id`              | Get role details                | Authenticated      |
-| PATCH  | `/:id`              | Update role                     | Sys Admin          |
-| DELETE | `/:id`              | Deactivate role                 | Sys Admin          |
-| POST   | `/:id/assign`       | Assign personnel to role        | Sys Admin          |
-| GET    | `/:id/personnel`    | List personnel assigned to role | Planner, Sys Admin |
-| POST   | `/:id/back-to-back` | Set back-to-back personnel pair | Sys Admin          |
+| Method | Endpoint | Description                  | Access        |
+| ------ | -------- | ---------------------------- | ------------- |
+| POST   | `/`      | Create offshore role         | Authenticated |
+| GET    | `/`      | List all roles               | Authenticated |
 
 ---
 
 ### Personnel — `/api/v1/personnel`
 
-| Method | Endpoint                    | Description                   | Access                           |
-| ------ | --------------------------- | ----------------------------- | -------------------------------- |
-| POST   | `/`                         | Create personnel record       | Sys Admin                        |
-| GET    | `/`                         | List all personnel            | Planner, Safety Admin, Sys Admin |
-| GET    | `/:id`                      | Get personnel details         | Authenticated                    |
-| PATCH  | `/:id`                      | Update personnel info         | Sys Admin                        |
-| DELETE | `/:id`                      | Remove personnel              | Sys Admin                        |
-| GET    | `/:id/certificates`         | Get all certificates          | Safety Admin, Sys Admin, Own     |
-| POST   | `/:id/certificates`         | Upload certificate (PDF)      | Safety Admin, Sys Admin          |
-| PATCH  | `/:id/certificates/:certId` | Update certificate record     | Safety Admin, Sys Admin          |
-| DELETE | `/:id/certificates/:certId` | Delete certificate            | Safety Admin, Sys Admin          |
-| GET    | `/:id/compliance`           | Get compliance status summary | Safety Admin, Planner, Sys Admin |
+| Method | Endpoint                    | Description                   | Access        |
+| ------ | --------------------------- | ----------------------------- | ------------- |
+| POST   | `/`                         | Create personnel record       | Authenticated |
+| GET    | `/`                         | List all personnel            | Authenticated |
+| PATCH  | `/:id`                      | Update personnel info         | Authenticated |
+| DELETE | `/:id`                      | Remove personnel              | Authenticated |
+| GET    | `/:id/compliance`           | Get compliance status summary | Authenticated |
+| POST   | `/:id/certificates`         | Add certificate               | Authenticated |
+| GET    | `/:id/certificates`         | List certificates             | Authenticated |
+| PATCH  | `/:id/certificates/:certId` | Update certificate record     | Authenticated |
+| DELETE | `/:id/certificates/:certId` | Delete certificate            | Authenticated |
 
 ---
 
-### Activities — `/api/v1/activities`
+### Notifications — `/api/v1/notifications`
 
-| Method | Endpoint          | Description                              | Access                    |
-| ------ | ----------------- | ---------------------------------------- | ------------------------- |
-| POST   | `/`               | Create activity                          | Activity Owner, Sys Admin |
-| GET    | `/`               | List all activities                      | Authenticated             |
-| GET    | `/:id`            | Get activity details                     | Authenticated             |
-| PATCH  | `/:id`            | Update activity                          | Activity Owner, Sys Admin |
-| DELETE | `/:id`            | Delete activity                          | Activity Owner, Sys Admin |
-| POST   | `/:id/submit`     | Submit activity for planner review       | Activity Owner            |
-| POST   | `/:id/approve`    | Approve activity                         | Planner                   |
-| POST   | `/:id/reject`     | Reject activity                          | Planner                   |
-| POST   | `/:id/reschedule` | Reschedule activity                      | Planner                   |
-| GET    | `/gantt`          | Get all activities in Gantt-ready format | Planner, OIM, Sys Admin   |
-| GET    | `/conflicts`      | Detect and list scheduling conflicts     | Planner                   |
-| GET    | `/queue`          | Pending approval queue                   | Planner                   |
+| Method | Endpoint       | Description                | Access        |
+| ------ | -------------- | -------------------------- | ------------- |
+| GET    | `/`            | Get user's notifications   | Authenticated |
+| PATCH  | `/:id/read`    | Mark notification as read  | Authenticated |
 
 ---
 
-### Travel & Mobilization — `/api/v1/travel`
+### Vessels — `/api/v1/vessels`
 
-| Method | Endpoint                    | Description                           | Access             |
-| ------ | --------------------------- | ------------------------------------- | ------------------ |
-| POST   | `/transport`                | Create transport configuration        | Sys Admin          |
-| GET    | `/transport`                | List all transport configurations     | Planner, Sys Admin |
-| PATCH  | `/transport/:id`            | Update transport config               | Sys Admin          |
-| DELETE | `/transport/:id`            | Remove transport                      | Sys Admin          |
-| GET    | `/schedule`                 | View upcoming travel schedule         | Planner, Personnel |
-| POST   | `/schedule/assign`          | Assign personnel to a trip            | Planner            |
-| GET    | `/schedule/:id/utilization` | Get utilization status for a trip     | Planner            |
-| GET    | `/alerts`                   | List low-utilization transport alerts | Planner            |
-
----
-
-### Compliance — `/api/v1/compliance`
-
-| Method | Endpoint                 | Description                                        | Access                       |
-| ------ | ------------------------ | -------------------------------------------------- | ---------------------------- |
-| GET    | `/expiring`              | Certificates expiring within N days                | Safety Admin, Planner        |
-| GET    | `/expired`               | All expired certificates                           | Safety Admin                 |
-| POST   | `/validate/:personnelId` | Validate personnel compliance for travel           | Safety Admin, Planner        |
-| GET    | `/activity/:activityId`  | Compliance status for all personnel on an activity | Safety Admin, Activity Owner |
+| Method | Endpoint               | Description                     | Access        |
+| ------ | ---------------------- | ------------------------------- | ------------- |
+| POST   | `/`                    | Create vessel or installation   | Authenticated |
+| GET    | `/`                    | List all vessels                | Authenticated |
+| GET    | `/:id`                 | Get vessel details              | Authenticated |
+| PATCH  | `/:id`                 | Update vessel info              | Authenticated |
+| DELETE | `/:id`                 | Remove vessel                   | Authenticated |
+| GET    | `/:id/pob`             | Real-time POB count (Redis)     | Authenticated |
+| GET    | `/:id/manifest`        | Full POB manifest snapshot      | Authenticated |
 
 ---
 
-### Dashboard — `/api/v1/dashboard`
+### Rooms
 
-| Method | Endpoint                 | Description                           | Access                  |
-| ------ | ------------------------ | ------------------------------------- | ----------------------- |
-| GET    | `/`                      | Role-filtered full dashboard data     | Authenticated           |
-| GET    | `/pob-today`             | Real-time POB vs Capacity             | Authenticated           |
-| GET    | `/activities/upcoming`   | Activities in the next 7 days         | Authenticated           |
-| GET    | `/certificates/expiring` | Certificates expiring in next 30 days | Safety Admin, Planner   |
-| GET    | `/travel/upcoming`       | Travel schedule for next 7 days       | Planner, Personnel      |
+**Under Vessel context — `/api/v1/vessels/:vesselId/rooms`**
+
+| Method | Endpoint         | Description                | Access        |
+| ------ | ---------------- | -------------------------- | ------------- |
+| POST   | `/`              | Create a room              | Authenticated |
+| GET    | `/`              | List all rooms on vessel   | Authenticated |
+| POST   | `/assign`        | Assign personnel to room   | Authenticated |
+
+**Direct access — `/api/v1/rooms`**
+
+| Method | Endpoint         | Description                | Access        |
+| ------ | ---------------- | -------------------------- | ------------- |
+| GET    | `/:id`           | Get room details           | Authenticated |
+| PATCH  | `/:id`           | Update room info           | Authenticated |
+| DELETE | `/:id`           | Delete room                | Authenticated |
+| GET    | `/:id/occupants` | Get current room occupants | Authenticated |
 
 ---
 
-### Reports — `/api/v1/reports`
+### Future Endpoints (Phase 4+)
 
-| Method | Endpoint      | Description                             | Access                  |
-| ------ | ------------- | --------------------------------------- | ----------------------- |
-| GET    | `/daily`      | Daily POB report                        | Planner, OIM, Sys Admin |
-| GET    | `/historical` | Historical POB data (date range filter) | Planner, OIM, Sys Admin |
-| GET    | `/export/pdf` | Export report as PDF                    | Planner, Sys Admin      |
-| GET    | `/export/csv` | Export report as CSV                    | Planner, Sys Admin      |
+The following endpoint groups are planned for future phases:
+
+- **Activities** — `/api/v1/activities` (Phase 5)
+- **Travel & Mobilization** — `/api/v1/travel` (Phase 6)
+- **Compliance Reports** — `/api/v1/compliance` (Phase 6)
+- **Dashboard** — `/api/v1/dashboard` (Phase 8)
+- **Reports** — `/api/v1/reports` (Phase 8)
 
 ---
 
 ## Project Structure (Clean Architecture)
 
 ```
-pob-backend/
+pob-management/
 ├── cmd/
 │   └── api/
-│       └── main.go               # Entry point
+│       └── main.go                           # Entry point
+├── config/
+│   ├── config.go                             # Env config loader
+│   └── role.config.go                        # RBAC roles & permissions matrix
 ├── internal/
-│   ├── domain/                   # Entities and interfaces
+│   ├── domain/                               # Entities
 │   │   ├── user.go
+│   │   ├── organization.go
 │   │   ├── vessel.go
+│   │   ├── room.go
+│   │   ├── room_assignment.go
 │   │   ├── personnel.go
-│   │   ├── activity.go
+│   │   ├── certificate.go
+│   │   ├── certificate_type.go
+│   │   ├── offshore_role.go
+│   │   ├── notification.go
 │   │   └── ...
-│   ├── handlers/                 # HTTP layer (request/response)
-│   │   ├── auth_handler.go
-│   │   ├── vessel_handler.go
-│   │   └── ...
-│   ├── services/                 # Business logic
-│   │   ├── auth_service.go
-│   │   ├── compliance_service.go
-│   │   └── ...
-│   ├── repository/               # Database queries
-│   │   ├── user_repo.go
-│   │   ├── vessel_repo.go
-│   │   └── ...
-│   └── middleware/               # JWT, RBAC, logging
-│       ├── auth.go
-│       └── rbac.go
+│   ├── delivery/http/
+│   │   ├── controllers/                      # HTTP handlers
+│   │   │   ├── auth.controller.go
+│   │   │   ├── user.controller.go
+│   │   │   ├── vessel.controller.go
+│   │   │   ├── room.controller.go
+│   │   │   ├── personnel.controller.go
+│   │   │   ├── certificate.controller.go
+│   │   │   ├── offshore_role.controller.go
+│   │   │   └── notification.controller.go
+│   │   ├── middleware/                       # JWT, RBAC
+│   │   │   ├── auth.go
+│   │   │   └── rbac.go
+│   │   └── routes/
+│   │       └── routes.go                     # Route registration
+│   ├── repository/                           # Database queries
+│   │   ├── user.repository.go
+│   │   ├── organization.repository.go
+│   │   ├── vessel.repository.go
+│   │   ├── room.repository.go
+│   │   ├── room_assignment.repository.go
+│   │   ├── personnel.repository.go
+│   │   ├── certificate.repository.go
+│   │   ├── certificate_type.repository.go
+│   │   ├── offshore_role.repository.go
+│   │   └── notification.repository.go
+│   └── service/                              # Business logic
+│       ├── auth.service.go
+│       ├── token_manager.go
+│       ├── user.service.go
+│       ├── vessel.service.go
+│       ├── room.service.go
+│       ├── personnel.service.go
+│       ├── certificate.service.go
+│       ├── certificate_type.service.go
+│       ├── offshore_role.service.go
+│       ├── compliance.service.go
+│       ├── reminder.service.go
+│       └── notification.service.go
 ├── pkg/
-│   ├── config/                   # Env config loader
-│   ├── database/                 # PostgreSQL + Redis init
-│   ├── jwt/                      # Token generation and parsing
-│   └── utils/                    # Shared helpers
-├── migrations/                   # SQL migration files
-├── .env.example
+│   ├── database/                             # MongoDB + Redis init
+│   │   ├── mongo.go
+│   │   └── redis.go
+│   ├── logger/                               # Logging utilities
+│   └── response/                             # Standardized API responses
+├── docs/
+│   ├── POB_Management_API.postman_collection.json   # Postman API docs
+│   └── model-relationships.md                       # Entity relationship docs
+├── .env
 ├── go.mod
 ├── go.sum
 ├── Dockerfile
@@ -388,4 +401,5 @@ pob-backend/
 
 ---
 
-_Version 1.0 — March 2026 | Testudo Nigeria Limited_
+_Version 1.1 — April 2026 | Testudo Nigeria Limited_
+_Phases 1–3 complete. Phases 4–8 in progress._
