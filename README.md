@@ -219,7 +219,7 @@ All routes are prefixed with `/api/v1`
 | GET    | `/historical`     | Historical POB data                 | Planner, OIM, Sys Admin |
 | GET    | `/export/pdf`     | Export report as PDF                | Planner, Sys Admin     |
 | GET    | `/export/csv`     | Export report as CSV                | Planner, Sys Admin     |
-
+```bash
 ## Project Structure (Clean Architecture)
 pob-management/
 ├── cmd/
@@ -291,62 +291,7 @@ pob-management/
 ├── go.sum
 ├── Dockerfile
 └── README.md
-## Project Structure (Clean Architecture)
-pob-management/
-├── cmd/
-│ └── api/
-│ └── main.go # Entry point
-├── config/
-│ ├── config.go # Env config loader
-│ └── role.config.go # RBAC roles & permissions matrix
-├── internal/
-│ ├── domain/ # Entities (all domain models)
-│ │ ├── activity.go, activity_assignment.go, activity_requirement.go
-│ │ ├── back_to_back_pair.go, role_assignment.go, rotation_schedule.go
-│ │ ├── transport.go, travel_schedule.go, travel_assignment.go
-│ │ ├── minimum_manning.go
-│ │ └── ... (user, vessel, room, personnel, certificate, etc.)
-│ ├── delivery/http/
-│ │ ├── controllers/ # HTTP handlers
-│ │ │ ├── activity.controller.go, rotation.controller.go
-│ │ │ ├── travel.controller.go, minimum_manning.controller.go
-│ │ │ ├── dashboard.controller.go, report.controller.go
-│ │ │ └── ... (auth, user, vessel, room, personnel, etc.)
-│ │ ├── middleware/ # JWT, RBAC
-│ │ │ ├── auth.go
-│ │ │ └── rbac.go
-│ │ └── routes/
-│ │ └── routes.go # Route registration
-│ ├── repository/ # Database queries
-│ │ ├── activity.repository.go, activity_requirement.repository.go, activity_assignment.repository.go
-│ │ ├── rotation_schedule.repository.go, role_assignment.repository.go, back_to_back_pair.repository.go
-│ │ ├── transport.repository.go, travel_schedule.repository.go, travel_assignment.repository.go
-│ │ ├── minimum_manning.repository.go
-│ │ └── ... (user, vessel, room, personnel, certificate, etc.)
-│ └── service/ # Business logic
-│ ├── activity.service.go, rotation.service.go
-│ ├── travel.service.go, minimum_manning.service.go
-│ ├── dashboard.service.go, report.service.go
-│ └── ... (auth, user, vessel, room, personnel, compliance, etc.)
-├── pkg/
-│ ├── database/ # MongoDB + Redis init
-│ │ ├── mongo.go
-│ │ └── redis.go
-│ ├── logger/ # Logging utilities
-│ └── response/ # Standardized API responses
-├── docs/
-│ ├── POB_Management_API.postman_collection.json # Postman API docs
-│ └── model-relationships.md # Entity relationship docs
-├── scripts/
-│ └── test_all_api.sh # Full API test script
-├── .env.example
-├── go.mod
-├── go.sum
-├── Dockerfile
-└── README.md
-
-
-
+```
 ## Non-Functional Requirements
 - Dashboard loads within **3 seconds** under normal network
 - API response times under **500ms** for standard reads
