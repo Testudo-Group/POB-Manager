@@ -22,7 +22,7 @@ func (c *RoomController) CreateRoom(ctx *gin.Context) {
 	var req service.CreateRoomInput
 	
 	// Inject vessel ID from path
-	idParam := ctx.Param("vesselId")
+	idParam := ctx.Param("id")
 	vesselID, err := bson.ObjectIDFromHex(idParam)
 	if err != nil {
 		response.Error(ctx, http.StatusBadRequest, "invalid vessel id format")
@@ -47,7 +47,7 @@ func (c *RoomController) CreateRoom(ctx *gin.Context) {
 func (c *RoomController) AssignRoom(ctx *gin.Context) {
 	var req service.AssignRoomInput
 	
-	idParam := ctx.Param("vesselId")
+	idParam := ctx.Param("id")
 	vesselID, err := bson.ObjectIDFromHex(idParam)
 	if err != nil {
 		response.Error(ctx, http.StatusBadRequest, "invalid vessel id format")
@@ -74,7 +74,7 @@ func (c *RoomController) AssignRoom(ctx *gin.Context) {
 }
 
 func (c *RoomController) ListRooms(ctx *gin.Context) {
-	idParam := ctx.Param("vesselId")
+	idParam := ctx.Param("id")
 	vesselID, err := bson.ObjectIDFromHex(idParam)
 	if err != nil {
 		response.Error(ctx, http.StatusBadRequest, "invalid vessel id format")
