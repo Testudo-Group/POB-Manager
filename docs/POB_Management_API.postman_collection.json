@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "POB Management API",
-    "description": "API for managing Personnel On Board, Vessels, Rooms, Certificates, and Compliance.\n\n## Authentication\nAll secured endpoints require a Bearer token in the `Authorization` header.\n\nUse `POST /api/v1/auth/login` or `POST /api/v1/auth/register` to obtain tokens.\n\n## Base URL\n`{{base_url}}` defaults to `http://localhost:8080`",
+    "description": "\u2705 **ALL 8 PHASES COMPLETE** \u2014 Production-Ready POB Management API\n\nAPI for managing Personnel On Board, Vessels, Rooms, Certificates, Compliance, Scheduling, Activities, Travel, Minimum Manning, and Reporting across offshore operations.\n\n## Phases Completed\n- Phase 1: Foundation (Auth, RBAC, DB, Redis) \u2705\n- Phase 2: Personnel & Compliance \u2705  \n- Phase 3: Vessel & Room Management \u2705\n- Phase 4: Roles & Rotation Scheduling \u2705\n- Phase 5: Activity Management (Gantt, Approvals) \u2705\n- Phase 6: Travel & Mobilization \u2705\n- Phase 7: Minimum Manning Mode \u2705\n- Phase 8: Dashboard & Reporting (PDF/CSV) \u2705\n\n## Authentication\nAll secured endpoints require a Bearer token in the `Authorization` header.\n\nUse `POST /api/v1/auth/login` or `POST /api/v1/auth/register` to obtain tokens.\n\n## Base URL\n`{{base_url}}` defaults to `http://localhost:8080`",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -77,14 +77,18 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/health",
-              "host": ["{{base_url}}"],
-              "path": ["health"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "health"
+              ]
             },
             "description": "Returns the health status of the API."
           },
           "response": [
             {
-              "name": "200 – Healthy",
+              "name": "200 \u2013 Healthy",
               "status": "OK",
               "code": 200,
               "body": "{\n  \"status\": \"ok\"\n}"
@@ -132,20 +136,27 @@
             },
             "url": {
               "raw": "{{base_url}}/api/v1/auth/register",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "auth", "register"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
             },
             "description": "Register a new organization and its system admin user. Returns auth tokens on success.\n\n**Auto-saves:** `access_token`, `refresh_token`, and `user_id` to collection variables."
           },
           "response": [
             {
-              "name": "201 – Registered",
+              "name": "201 \u2013 Registered",
               "status": "Created",
               "code": 201,
               "body": "{\n  \"status\": \"success\",\n  \"message\": \"organization registered successfully\",\n  \"data\": {\n    \"user\": {\n      \"id\": \"...\",\n      \"organization_id\": \"...\",\n      \"first_name\": \"John\",\n      \"last_name\": \"Doe\",\n      \"email\": \"john.doe@offshorecorp.com\",\n      \"role\": \"system_admin\",\n      \"is_active\": true\n    },\n    \"tokens\": {\n      \"access_token\": \"...\",\n      \"refresh_token\": \"...\",\n      \"access_token_expires_at\": \"...\",\n      \"refresh_token_expires_at\": \"...\"\n    }\n  }\n}"
             },
             {
-              "name": "409 – Conflict",
+              "name": "409 \u2013 Conflict",
               "status": "Conflict",
               "code": 409,
               "body": "{\n  \"status\": \"error\",\n  \"message\": \"email already exists\"\n}"
@@ -187,20 +198,27 @@
             },
             "url": {
               "raw": "{{base_url}}/api/v1/auth/login",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "auth", "login"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
             },
             "description": "Authenticate with email and password. Returns access and refresh tokens.\n\n**Auto-saves:** `access_token`, `refresh_token`, and `user_id` to collection variables."
           },
           "response": [
             {
-              "name": "200 – Success",
+              "name": "200 \u2013 Success",
               "status": "OK",
               "code": 200,
               "body": "{\n  \"status\": \"success\",\n  \"message\": \"login successful\",\n  \"data\": {\n    \"user\": { \"id\": \"...\", \"email\": \"...\" },\n    \"tokens\": { \"access_token\": \"...\", \"refresh_token\": \"...\" }\n  }\n}"
             },
             {
-              "name": "401 – Invalid Credentials",
+              "name": "401 \u2013 Invalid Credentials",
               "status": "Unauthorized",
               "code": 401,
               "body": "{\n  \"status\": \"error\",\n  \"message\": \"invalid credentials\"\n}"
@@ -241,8 +259,15 @@
             },
             "url": {
               "raw": "{{base_url}}/api/v1/auth/refresh",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "auth", "refresh"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "refresh"
+              ]
             },
             "description": "Use a valid refresh token to obtain a new access/refresh token pair.\n\n**Auto-saves:** `access_token` and `refresh_token` to collection variables."
           },
@@ -255,8 +280,15 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/v1/auth/logout",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "auth", "logout"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ]
             },
             "description": "Invalidates the current user's refresh token. Requires authentication."
           },
@@ -269,8 +301,15 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/v1/auth/me",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "auth", "me"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
             },
             "description": "Returns the currently authenticated user's profile."
           },
@@ -292,8 +331,15 @@
             },
             "url": {
               "raw": "{{base_url}}/api/v1/auth/me",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "auth", "me"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
             },
             "description": "Update the authenticated user's first and last name."
           },
@@ -315,8 +361,15 @@
             },
             "url": {
               "raw": "{{base_url}}/api/v1/auth/change-password",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "auth", "change-password"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "change-password"
+              ]
             },
             "description": "Change the authenticated user's password. Requires current password verification. Invalidates existing refresh tokens."
           },
@@ -358,8 +411,14 @@
             },
             "url": {
               "raw": "{{base_url}}/api/v1/users",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "users"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ]
             },
             "description": "Create a new user within the organization. Requires `assign_user_role` permission.\n\n**Valid Roles:** `system_admin`, `oim`, `safety_admin`, `planner`, `activity_owner`, `personnel`"
           },
@@ -372,8 +431,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/v1/users",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "users"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ]
             },
             "description": "List all users within the authenticated user's organization. Requires `list_users` permission."
           },
@@ -386,8 +451,15 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/v1/users/{{user_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "users", "{{user_id}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{user_id}}"
+              ]
             },
             "description": "Fetch a specific user by their ID."
           },
@@ -409,8 +481,15 @@
             },
             "url": {
               "raw": "{{base_url}}/api/v1/users/{{user_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "users", "{{user_id}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{user_id}}"
+              ]
             },
             "description": "Update a user's profile details. Requires `update_user` permission."
           },
@@ -432,8 +511,16 @@
             },
             "url": {
               "raw": "{{base_url}}/api/v1/users/{{user_id}}/role",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "users", "{{user_id}}", "role"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{user_id}}",
+                "role"
+              ]
             },
             "description": "Assign a new role to a user. Requires `assign_user_role` permission.\n\n**Valid Roles:** `system_admin`, `oim`, `safety_admin`, `planner`, `activity_owner`, `personnel`"
           },
@@ -446,8 +533,15 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/v1/users/{{user_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "users", "{{user_id}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{user_id}}"
+              ]
             },
             "description": "Deactivate (soft-delete) a user. Requires `deactivate_user` permission."
           },
@@ -489,8 +583,14 @@
             },
             "url": {
               "raw": "{{base_url}}/api/v1/positions",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "positions"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "positions"
+              ]
             },
             "description": "Create a new offshore role / position.\n\n**Type:** `Core` or `Flexible`"
           },
@@ -503,8 +603,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/v1/positions",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "positions"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "positions"
+              ]
             },
             "description": "List all defined offshore roles / positions."
           },
@@ -546,8 +652,14 @@
             },
             "url": {
               "raw": "{{base_url}}/api/v1/personnel",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "personnel"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "personnel"
+              ]
             },
             "description": "Register a new personnel member. Provide `offshore_role_ids` as an array of valid role ObjectIDs."
           },
@@ -560,8 +672,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/v1/personnel",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "personnel"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "personnel"
+              ]
             },
             "description": "List all registered personnel."
           },
@@ -583,8 +701,15 @@
             },
             "url": {
               "raw": "{{base_url}}/api/v1/personnel/{{personnel_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "personnel", "{{personnel_id}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "personnel",
+                "{{personnel_id}}"
+              ]
             },
             "description": "Update an existing personnel member's details."
           },
@@ -597,8 +722,15 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/v1/personnel/{{personnel_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "personnel", "{{personnel_id}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "personnel",
+                "{{personnel_id}}"
+              ]
             },
             "description": "Delete a personnel member."
           },
@@ -611,8 +743,16 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/v1/personnel/{{personnel_id}}/compliance",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "personnel", "{{personnel_id}}", "compliance"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "personnel",
+                "{{personnel_id}}",
+                "compliance"
+              ]
             },
             "description": "Check a personnel member's certification compliance against their assigned offshore roles. Returns compliance status: `Compliant`, `Non-Compliant`, or details of missing / expired certificates."
           },
@@ -654,8 +794,16 @@
             },
             "url": {
               "raw": "{{base_url}}/api/v1/personnel/{{personnel_id}}/certificates",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "personnel", "{{personnel_id}}", "certificates"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "personnel",
+                "{{personnel_id}}",
+                "certificates"
+              ]
             },
             "description": "Add a certificate to a personnel member. The `certificate_type` must match a valid certificate type code.\n\nStatus is auto-calculated: `Valid`, `Expiring` (< 30 days), or `Expired`."
           },
@@ -668,8 +816,16 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/v1/personnel/{{personnel_id}}/certificates",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "personnel", "{{personnel_id}}", "certificates"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "personnel",
+                "{{personnel_id}}",
+                "certificates"
+              ]
             },
             "description": "List all certificates belonging to a specific personnel member."
           },
@@ -691,8 +847,17 @@
             },
             "url": {
               "raw": "{{base_url}}/api/v1/personnel/{{personnel_id}}/certificates/{{certificate_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "personnel", "{{personnel_id}}", "certificates", "{{certificate_id}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "personnel",
+                "{{personnel_id}}",
+                "certificates",
+                "{{certificate_id}}"
+              ]
             },
             "description": "Update an existing certificate's details (e.g., after renewal)."
           },
@@ -705,8 +870,17 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/v1/personnel/{{personnel_id}}/certificates/{{certificate_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "personnel", "{{personnel_id}}", "certificates", "{{certificate_id}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "personnel",
+                "{{personnel_id}}",
+                "certificates",
+                "{{certificate_id}}"
+              ]
             },
             "description": "Delete a certificate from a personnel member's record."
           },
@@ -725,8 +899,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/v1/notifications",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "notifications"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications"
+              ]
             },
             "description": "Fetch all notifications for the currently authenticated user. Includes certificate expiry reminders and compliance alerts."
           },
@@ -739,8 +919,16 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/v1/notifications/{{notification_id}}/read",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "notifications", "{{notification_id}}", "read"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications",
+                "{{notification_id}}",
+                "read"
+              ]
             },
             "description": "Mark a specific notification as read."
           },
@@ -782,8 +970,14 @@
             },
             "url": {
               "raw": "{{base_url}}/api/v1/vessels",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "vessels"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "vessels"
+              ]
             },
             "description": "Create a new vessel or installation.\n\n**Vessel Types:** `FPSO`, `Platform`, `Jack-Up`, `Semi-Sub`, `Drillship`\n\n`pob_capacity` sets the hard limit for room assignments. A Redis counter is initialized at 0."
           },
@@ -796,8 +990,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/v1/vessels",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "vessels"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "vessels"
+              ]
             },
             "description": "List all vessels and installations."
           },
@@ -810,8 +1010,15 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/v1/vessels/{{vessel_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "vessels", "{{vessel_id}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "vessels",
+                "{{vessel_id}}"
+              ]
             },
             "description": "Fetch a single vessel by its ID."
           },
@@ -833,8 +1040,15 @@
             },
             "url": {
               "raw": "{{base_url}}/api/v1/vessels/{{vessel_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "vessels", "{{vessel_id}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "vessels",
+                "{{vessel_id}}"
+              ]
             },
             "description": "Update vessel details."
           },
@@ -847,8 +1061,15 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/v1/vessels/{{vessel_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "vessels", "{{vessel_id}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "vessels",
+                "{{vessel_id}}"
+              ]
             },
             "description": "Delete a vessel."
           },
@@ -861,10 +1082,18 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/v1/vessels/{{vessel_id}}/pob",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "vessels", "{{vessel_id}}", "pob"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "vessels",
+                "{{vessel_id}}",
+                "pob"
+              ]
             },
-            "description": "Get the live Personnel On Board count for a vessel. This is a fast Redis-based query — not a database scan."
+            "description": "Get the live Personnel On Board count for a vessel. This is a fast Redis-based query \u2014 not a database scan."
           },
           "response": []
         },
@@ -875,10 +1104,18 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/v1/vessels/{{vessel_id}}/manifest",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "vessels", "{{vessel_id}}", "manifest"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "vessels",
+                "{{vessel_id}}",
+                "manifest"
+              ]
             },
-            "description": "Get the full active room assignment manifest for a vessel — all currently assigned personnel."
+            "description": "Get the full active room assignment manifest for a vessel \u2014 all currently assigned personnel."
           },
           "response": []
         }
@@ -918,8 +1155,16 @@
             },
             "url": {
               "raw": "{{base_url}}/api/v1/vessels/{{vessel_id}}/rooms",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "vessels", "{{vessel_id}}", "rooms"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "vessels",
+                "{{vessel_id}}",
+                "rooms"
+              ]
             },
             "description": "Create a room within a vessel.\n\n**Category:** `Dedicated` (for core crew) or `Transient` (for flexible / visiting)\n\n`capacity` = number of beds in the room."
           },
@@ -932,8 +1177,16 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/v1/vessels/{{vessel_id}}/rooms",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "vessels", "{{vessel_id}}", "rooms"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "vessels",
+                "{{vessel_id}}",
+                "rooms"
+              ]
             },
             "description": "List all rooms belonging to a specific vessel."
           },
@@ -955,26 +1208,35 @@
             },
             "url": {
               "raw": "{{base_url}}/api/v1/vessels/{{vessel_id}}/rooms/assign",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "vessels", "{{vessel_id}}", "rooms", "assign"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "vessels",
+                "{{vessel_id}}",
+                "rooms",
+                "assign"
+              ]
             },
             "description": "Assign a personnel member to a room bed on a vessel.\n\n**Enforcement chain:**\n1. Room capacity check\n2. Personnel compliance check (cert blocking)\n3. Vessel POB capacity check (Redis atomic increment)\n\n**Type:** `Core` (requires `offshore_role_id`) or `Flexible` (requires `activity_id` and `ends_at`)"
           },
           "response": [
             {
-              "name": "400 – Room Capacity Exceeded",
+              "name": "400 \u2013 Room Capacity Exceeded",
               "status": "Bad Request",
               "code": 400,
               "body": "{\n  \"status\": \"error\",\n  \"message\": \"room capacity exceeded\"\n}"
             },
             {
-              "name": "400 – Non-Compliant Personnel",
+              "name": "400 \u2013 Non-Compliant Personnel",
               "status": "Bad Request",
               "code": 400,
               "body": "{\n  \"status\": \"error\",\n  \"message\": \"cannot assign room: personnel is non-compliant\"\n}"
             },
             {
-              "name": "400 – Vessel POB Exceeded",
+              "name": "400 \u2013 Vessel POB Exceeded",
               "status": "Bad Request",
               "code": 400,
               "body": "{\n  \"status\": \"error\",\n  \"message\": \"cannot assign room: vessel pob capacity exceeded\"\n}"
@@ -988,8 +1250,15 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/v1/rooms/{{room_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "rooms", "{{room_id}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "rooms",
+                "{{room_id}}"
+              ]
             },
             "description": "Fetch a specific room by its ID."
           },
@@ -1011,8 +1280,15 @@
             },
             "url": {
               "raw": "{{base_url}}/api/v1/rooms/{{room_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "rooms", "{{room_id}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "rooms",
+                "{{room_id}}"
+              ]
             },
             "description": "Update room details."
           },
@@ -1025,8 +1301,15 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/v1/rooms/{{room_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "rooms", "{{room_id}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "rooms",
+                "{{room_id}}"
+              ]
             },
             "description": "Delete a room."
           },
@@ -1039,8 +1322,16 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/v1/rooms/{{room_id}}/occupants",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "rooms", "{{room_id}}", "occupants"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "rooms",
+                "{{room_id}}",
+                "occupants"
+              ]
             },
             "description": "List all active room assignments (current occupants) for a specific room."
           },
@@ -1048,6 +1339,1206 @@
         }
       ],
       "description": "Room management and personnel-to-room assignment with capacity enforcement."
+    },
+    {
+      "name": "Rotation & Scheduling",
+      "description": "Phase 4 - Rotation schedules, role assignments, back-to-back pairs",
+      "item": [
+        {
+          "name": "Create Rotation Schedule",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/rotation-schedules",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "rotation-schedules"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"offshore_role_id\": \"\",\n  \"vessel_id\": \"\",\n  \"name\": \"2-on-2-off\",\n  \"days_on\": 28,\n  \"days_off\": 28,\n  \"cycle_anchor_date\": \"2026-04-14T00:00:00Z\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Rotation Schedules",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/rotation-schedules?role_id={{role_id}}&vessel_id={{vessel_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "rotation-schedules"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Assign Personnel to Role",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/role-assignments/assign",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "role-assignments",
+                "assign"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"offshore_role_id\": \"\",\n  \"personnel_id\": \"\",\n  \"vessel_id\": \"\",\n  \"assigned_by_user_id\": \"{{user_id}}\",\n  \"effective_from\": \"2026-04-14T00:00:00Z\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "End Role Assignment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/role-assignments/:id/end",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "role-assignments",
+                ":id",
+                "end"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"effective_to\": \"2026-04-21T00:00:00Z\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Vessel Manning Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/vessels/:id/manning",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "vessels",
+                ":id",
+                "manning"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Back-to-Back Pair",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/back-to-back-pairs",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "back-to-back-pairs"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role_id\": \"\",\n  \"vessel_id\": \"\",\n  \"personnel_ids\": [],\n  \"start_rotation\": \"2026-04-14\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Back-to-Back Pairs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/back-to-back-pairs?role_id={{role_id}}&vessel_id={{vessel_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "back-to-back-pairs"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Calculate Next Rotation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/rotation/calculate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "rotation",
+                "calculate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role_id\": \"\",\n  \"vessel_id\": \"\",\n  \"current_date\": \"2026-04-14\"\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Activities",
+      "description": "Phase 5 - Activity management, approvals, gantt charts",
+      "item": [
+        {
+          "name": "Create Activity",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "activities"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vessel_id\": \"\",\n  \"name\": \"Tank Inspection\",\n  \"description\": \"Internal tank inspection\",\n  \"priority\": \"HIGH\",\n  \"start_date\": \"2026-04-14T08:00:00Z\",\n  \"end_date\": \"2026-04-15T18:00:00Z\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Activities",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "activities"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Activity Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "activities",
+                ":id"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Gantt Chart Data",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities/gantt",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "activities",
+                "gantt"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Check for Conflicts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities/conflicts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "activities",
+                "conflicts"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Pending Approval Queue",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities/queue",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "activities",
+                "queue"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Activity for Approval",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities/submit",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "activities",
+                "submit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"activity_id\": \"\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Approve Activity",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities/approve",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "activities",
+                "approve"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"activity_id\": \"\",\n  \"reviewed_by_user_id\": \"{{user_id}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reject Activity",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities/reject",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "activities",
+                "reject"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"activity_id\": \"\",\n  \"rejection_reason\": \"Scheduling conflict\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Activity Requirements",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities/:id/requirements",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "activities",
+                ":id",
+                "requirements"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Activity Assignments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities/:id/assignments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "activities",
+                ":id",
+                "assignments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Assign Personnel to Activity",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities/assign",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "activities",
+                "assign"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"activity_id\": \"\",\n  \"personnel_id\": \"\",\n  \"offshore_role_id\": \"\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Activity",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "activities",
+                ":id"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Travel & Mobilization",
+      "description": "Phase 6 - Transport, travel schedules, assignments",
+      "item": [
+        {
+          "name": "Create Transport",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/transports",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transports"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Helicopter A\",\n  \"type\": \"HELICOPTER\",\n  \"capacity\": 18,\n  \"cost_per_trip\": 50000\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Transports",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/transports",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transports"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Transport Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/transports/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transports",
+                ":id"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Transport",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/transports/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transports",
+                ":id"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"capacity\": 20,\n  \"cost_per_trip\": 52000\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Transport",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/transports/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transports",
+                ":id"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Travel Schedule",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/travel/schedules",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "travel",
+                "schedules"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transport_id\": \"\",\n  \"origin\": \"Lagos\",\n  \"destination\": \"Offshore Platform A\",\n  \"departure_at\": \"2026-04-16T08:00:00Z\",\n  \"arrival_at\": \"2026-04-16T11:00:00Z\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Upcoming Travel Schedules",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/travel/schedules",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "travel",
+                "schedules"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Travel Schedule Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/travel/schedules/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "travel",
+                "schedules",
+                ":id"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Trip Assignments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/travel/schedules/:id/assignments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "travel",
+                "schedules",
+                ":id",
+                "assignments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Match Activities to Travel",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/travel/match-activities",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "travel",
+                "match-activities"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Assign Personnel to Travel",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/travel/assign",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "travel",
+                "assign"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schedule_id\": \"\",\n  \"personnel_id\": \"\",\n  \"activity_id\": \"\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Utilization Alerts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/travel/alerts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "travel",
+                "alerts"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Suggest Travel Consolidation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/travel/consolidate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "travel",
+                "consolidate"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Travel Schedules",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/travel/my-travels",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "travel",
+                "my-travels"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Minimum Manning",
+      "description": "Phase 7 - Minimum manning mode activation/deactivation",
+      "item": [
+        {
+          "name": "Activate Minimum Manning",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/minimum-manning/activate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "minimum-manning",
+                "activate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vessel_id\": \"\",\n  \"activated_by_user_id\": \"{{user_id}}\",\n  \"reason\": \"Emergency situation\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Deactivate Minimum Manning",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/minimum-manning/deactivate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "minimum-manning",
+                "deactivate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vessel_id\": \"\",\n  \"deactivated_by_user_id\": \"{{user_id}}\",\n  \"reason\": \"Situation resolved\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Active Minimum Manning Event",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/minimum-manning/active?vessel_id={{vessel_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "minimum-manning",
+                "active"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Minimum Manning History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/minimum-manning/history?vessel_id={{vessel_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "minimum-manning",
+                "history"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "description": "Phase 8 - Real-time POB and analytics dashboard",
+      "item": [
+        {
+          "name": "Get Dashboard Data",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "description": "Phase 8 - POB reports and exports",
+      "item": [
+        {
+          "name": "Get Daily POB Report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/reports/daily?vessel_id={{vessel_id}}&date=2026-04-14",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reports",
+                "daily"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Historical POB Report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/reports/historical?vessel_id={{vessel_id}}&start_date=2026-04-01&end_date=2026-04-14",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reports",
+                "historical"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Export Report as PDF",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/reports/export/pdf?vessel_id={{vessel_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reports",
+                "export",
+                "pdf"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Export Report as CSV",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/reports/export/csv?vessel_id={{vessel_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reports",
+                "export",
+                "csv"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
     }
   ]
 }

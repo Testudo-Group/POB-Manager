@@ -131,7 +131,7 @@ func (ctl *AuthController) Refresh(c *gin.Context) {
 }
 
 func (ctl *AuthController) Logout(c *gin.Context) {
-	userID := c.GetString("userID")
+	userID := c.GetString("user_id")
 	if err := ctl.authService.Logout(c.Request.Context(), userID); err != nil {
 		response.Error(c, http.StatusInternalServerError, "failed to logout")
 		return
@@ -141,7 +141,7 @@ func (ctl *AuthController) Logout(c *gin.Context) {
 }
 
 func (ctl *AuthController) Me(c *gin.Context) {
-	userID := c.GetString("userID")
+	userID := c.GetString("user_id")
 	user, err := ctl.authService.Me(c.Request.Context(), userID)
 	if err != nil {
 		response.Error(c, http.StatusNotFound, "user not found")
@@ -158,7 +158,7 @@ func (ctl *AuthController) UpdateMe(c *gin.Context) {
 		return
 	}
 
-	userID := c.GetString("userID")
+	userID := c.GetString("user_id")
 	user, err := ctl.authService.UpdateMe(c.Request.Context(), userID, service.UpdateProfileInput{
 		FirstName: req.FirstName,
 		LastName:  req.LastName,
@@ -178,7 +178,7 @@ func (ctl *AuthController) ChangePassword(c *gin.Context) {
 		return
 	}
 
-	userID := c.GetString("userID")
+	userID := c.GetString("user_id")
 	err := ctl.authService.ChangePassword(c.Request.Context(), userID, service.ChangePasswordInput{
 		CurrentPassword: req.CurrentPassword,
 		NewPassword:     req.NewPassword,

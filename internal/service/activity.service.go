@@ -60,14 +60,6 @@ type CreateActivityInput struct {
 }
 
 func (s *ActivityService) Create(ctx context.Context, input CreateActivityInput) (*domain.Activity, error) {
-	// Check for scheduling conflicts
-	conflicts, err := s.checkConflicts(ctx, input.VesselID, input.StartDate, input.EndDate, nil)
-	if err != nil {
-		return nil, err
-	}
-	if len(conflicts) > 0 {
-		return nil, ErrActivityConflict
-	}
 
 	// Validate duration
 	durationDays := int(input.EndDate.Sub(input.StartDate).Hours() / 24)
@@ -91,10 +83,9 @@ func (s *ActivityService) Create(ctx context.Context, input CreateActivityInput)
 		UpdatedAt:       now,
 	}
 
-	err = s.activityRepo.Create(ctx, activity)
-	if err != nil {
-		return nil, err
-	}
+	       if err := s.activityRepo.Create(ctx, activity); err != nil {
+		       return nil, err
+	       }
 
 	// Create requirements
 	for _, req := range input.Requirements {

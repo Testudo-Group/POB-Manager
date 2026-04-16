@@ -11,7 +11,7 @@ import (
 
 func RequireRole(allowedRoles ...domain.UserRole) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		roleVal, exists := c.Get("userRole")
+		roleVal, exists := c.Get("user_role")
 		if !exists {
 			response.Error(c, http.StatusUnauthorized, "user role not found in context")
 			c.Abort()
@@ -50,7 +50,7 @@ func RequireRole(allowedRoles ...domain.UserRole) gin.HandlerFunc {
 
 func RequirePermission(permission config.Permission) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		roleVal, exists := c.Get("userRole")
+		roleVal, exists := c.Get("user_role")
 		if !exists {
 			response.Error(c, http.StatusUnauthorized, "user role not found in context")
 			c.Abort()

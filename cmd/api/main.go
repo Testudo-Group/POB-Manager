@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/codingninja/pob-management/config"
+	"github.com/codingninja/pob-management/internal/delivery/http/middleware"
 	"github.com/codingninja/pob-management/internal/delivery/http/routes"
 	"github.com/codingninja/pob-management/pkg/database"
 	"github.com/gin-gonic/gin"
@@ -25,6 +26,9 @@ func main() {
 
 	// Setup Gin
 	r := gin.Default()
+
+	// Apply CORS middleware
+	r.Use(middleware.CORSMiddleware())
 
 	// Register routes
 	routes.Setup(r, db, rdb, cfg)

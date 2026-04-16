@@ -40,10 +40,10 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 			return
 		}
 
-		c.Set("userID", claims.Subject)
-		c.Set("organizationID", claims.OrganizationID)
-		c.Set("userRole", claims.Role)
-		c.Set("userEmail", claims.Email)
+		c.Set("user_id", claims.Subject)
+		c.Set("organization_id", claims.OrganizationID)
+		c.Set("user_role", claims.Role)
+		c.Set("user_email", claims.Email)
 		c.Next()
 	}
 }
