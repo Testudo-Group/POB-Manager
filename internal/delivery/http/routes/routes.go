@@ -9,13 +9,14 @@ import (
 	"github.com/codingninja/pob-management/internal/delivery/http/middleware"
 	"github.com/codingninja/pob-management/internal/repository"
 	"github.com/codingninja/pob-management/internal/service"
+	"github.com/codingninja/pob-management/pkg/database"
 
 	"github.com/gin-gonic/gin"
-	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
-func Setup(r *gin.Engine, db *mongo.Database, rdb *redis.Client, cfg *config.Config) {
+// Changed: *redis.Client → database.RedisInterface
+func Setup(r *gin.Engine, db *mongo.Database, rdb database.RedisInterface, cfg *config.Config) {
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
@@ -100,10 +101,6 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb *redis.Client, cfg *config.Con
 	{
 		roles.POST("", roleCtrl.CreateRole)
 		roles.GET("", roleCtrl.ListRoles)
-		roles.GET("/:id", roleCtrl.GetRole)
-		roles.PATCH("/:id", roleCtrl.UpdateRole)
-		roles.POST("/:id/certificates", roleCtrl.AddRequiredCertificate)
-		roles.DELETE("/:id/certificates/:certTypeId", roleCtrl.RemoveRequiredCertificate)
 	}
 
 	personnel := apiSecured.Group("/personnel")
@@ -132,14 +129,12 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb *redis.Client, cfg *config.Con
 	vesselRepo := repository.NewVesselRepository(db)
 	roomRepo := repository.NewRoomRepository(db)
 	roomAssignRepo := repository.NewRoomAssignmentRepository(db)
-	vesselEventRepo := repository.NewVesselEventRepository(db)
 
 	vesselRepo.EnsureIndexes(context.Background())
 	roomRepo.EnsureIndexes(context.Background())
 	roomAssignRepo.EnsureIndexes(context.Background())
-	vesselEventRepo.EnsureIndexes(context.Background())
 
-	vesselSvc := service.NewVesselService(vesselRepo, roomAssignRepo, vesselEventRepo, rdb)
+	vesselSvc := service.NewVesselService(vesselRepo, roomAssignRepo, rdb)
 	roomSvc := service.NewRoomService(roomRepo, roomAssignRepo, vesselSvc, compSvc)
 
 	vesselCtrl := controllers.NewVesselController(vesselSvc)
@@ -156,15 +151,10 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb *redis.Client, cfg *config.Con
 
 		vessels.GET("/:id/pob", vesselCtrl.GetRealTimePOB)
 		vessels.GET("/:id/manifest", vesselCtrl.GetManifest)
-		vessels.GET("/default", vesselCtrl.GetDefaultVessel)
-		vessels.PATCH("/:id/set-default", vesselCtrl.SetDefaultVessel)
-		vessels.POST("/:id/timeline", vesselCtrl.AddVesselEvent)
-		vessels.GET("/:id/timeline", vesselCtrl.GetVesselTimeline)
 
 		// Room Routes within Vessel context
 		vessels.POST("/:id/rooms", roomCtrl.CreateRoom)
 		vessels.GET("/:id/rooms", roomCtrl.ListRooms)
-		vessels.GET("/:id/rooms/by-deck", roomCtrl.GetRoomsByDeck)
 		vessels.POST("/:id/rooms/assign", roomCtrl.AssignRoom)
 	}
 
@@ -210,12 +200,10 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb *redis.Client, cfg *config.Con
 	{
 		roleAssignments.POST("/assign", rotationCtrl.AssignRole)
 		roleAssignments.POST("/:id/end", rotationCtrl.EndAssignment)
-		roleAssignments.POST("/:id/handover", rotationCtrl.TriggerShiftHandover)
 	}
 
 	// Vessel Manning (add to existing vessels group)
 	vessels.GET("/:id/manning", rotationCtrl.GetVesselManning)
-	vessels.GET("/:id/active-assignments", rotationCtrl.GetActiveAssignments)
 
 	// Back-to-Back Pairs
 	backToBack := apiSecured.Group("/back-to-back-pairs")
@@ -284,7 +272,6 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb *redis.Client, cfg *config.Con
 		travelAssignmentRepo,
 		activityRepo,
 		personnelRepo,
-		vesselRepo,
 		compSvc,
 	)
 
