@@ -9,13 +9,13 @@ import (
 	"github.com/codingninja/pob-management/internal/delivery/http/middleware"
 	"github.com/codingninja/pob-management/internal/repository"
 	"github.com/codingninja/pob-management/internal/service"
-	"github.com/codingninja/pob-management/pkg/database"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
-func Setup(r *gin.Engine, db *mongo.Database, rdb database.RedisInterface, cfg *config.Config) {
+func Setup(r *gin.Engine, db *mongo.Database, rdb *redis.Client, cfg *config.Config) {
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
@@ -111,7 +111,6 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb database.RedisInterface, cfg *
 		personnel.DELETE("/:id", personnelCtrl.DeletePersonnel)
 		personnel.GET("/:id/compliance", personnelCtrl.CheckCompliance)
 
-		// Certificate Routes
 		personnel.POST("/:id/certificates", certCtrl.CreateCertificate)
 		personnel.GET("/:id/certificates", certCtrl.ListCertificates)
 		personnel.PATCH("/:id/certificates/:certId", certCtrl.UpdateCertificate)
@@ -124,19 +123,18 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb database.RedisInterface, cfg *
 		notifications.PATCH("/:id/read", notifCtrl.MarkAsRead)
 	}
 
-	// ==================== PHASE 3: VESSEL & ROOM MANAGEMENT ====================
-
 	// Phase 3 Initialization
 	vesselRepo := repository.NewVesselRepository(db)
 	roomRepo := repository.NewRoomRepository(db)
 	roomAssignRepo := repository.NewRoomAssignmentRepository(db)
+	vesselEventRepo := repository.NewVesselEventRepository(db)
 
 	vesselRepo.EnsureIndexes(context.Background())
 	roomRepo.EnsureIndexes(context.Background())
 	roomAssignRepo.EnsureIndexes(context.Background())
+	vesselEventRepo.EnsureIndexes(context.Background())
 
-	// FIX 1: 3 parameters (no VesselEventRepository)
-	vesselSvc := service.NewVesselService(vesselRepo, roomAssignRepo, rdb)
+	vesselSvc := service.NewVesselService(vesselRepo, roomAssignRepo, vesselEventRepo, rdb)
 	roomSvc := service.NewRoomService(roomRepo, roomAssignRepo, vesselSvc, compSvc)
 
 	vesselCtrl := controllers.NewVesselController(vesselSvc)
@@ -154,7 +152,6 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb database.RedisInterface, cfg *
 		vessels.GET("/:id/pob", vesselCtrl.GetRealTimePOB)
 		vessels.GET("/:id/manifest", vesselCtrl.GetManifest)
 
-		// Room Routes within Vessel context
 		vessels.POST("/:id/rooms", roomCtrl.CreateRoom)
 		vessels.GET("/:id/rooms", roomCtrl.ListRooms)
 		vessels.POST("/:id/rooms/assign", roomCtrl.AssignRoom)
@@ -168,9 +165,7 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb database.RedisInterface, cfg *
 		rooms.GET("/:id/occupants", roomCtrl.GetRoomOccupants)
 	}
 
-	// ==================== PHASE 4: ROLES & ROTATION SCHEDULING ====================
-
-	// Phase 4 Initialization
+	// Phase 4
 	rotationScheduleRepo := repository.NewRotationScheduleRepository(db)
 	roleAssignmentRepo := repository.NewRoleAssignmentRepository(db)
 	backToBackPairRepo := repository.NewBackToBackPairRepository(db)
@@ -190,36 +185,29 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb database.RedisInterface, cfg *
 
 	rotationCtrl := controllers.NewRotationController(rotationSvc)
 
-	// Rotation Schedule Routes
 	rotationSchedules := apiSecured.Group("/rotation-schedules")
 	{
 		rotationSchedules.POST("", rotationCtrl.CreateSchedule)
 		rotationSchedules.GET("", rotationCtrl.GetSchedules)
 	}
 
-	// Role Assignment Routes
 	roleAssignments := apiSecured.Group("/role-assignments")
 	{
 		roleAssignments.POST("/assign", rotationCtrl.AssignRole)
 		roleAssignments.POST("/:id/end", rotationCtrl.EndAssignment)
 	}
 
-	// Vessel Manning (add to existing vessels group)
 	vessels.GET("/:id/manning", rotationCtrl.GetVesselManning)
 
-	// Back-to-Back Pairs
 	backToBack := apiSecured.Group("/back-to-back-pairs")
 	{
 		backToBack.POST("", rotationCtrl.CreateBackToBackPair)
 		backToBack.GET("", rotationCtrl.GetBackToBackPairs)
 	}
 
-	// Rotation Calculation
 	apiSecured.POST("/rotation/calculate", rotationCtrl.CalculateNextRotation)
 
-	// ==================== PHASE 5: ACTIVITY MANAGEMENT ====================
-
-	// Phase 5 Initialization
+	// Phase 5
 	activityRepo := repository.NewActivityRepository(db)
 	requirementRepo := repository.NewActivityRequirementRepository(db)
 	assignmentRepo := repository.NewActivityAssignmentRepository(db)
@@ -239,7 +227,6 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb database.RedisInterface, cfg *
 
 	activityCtrl := controllers.NewActivityController(activitySvc)
 
-	// Activity Routes
 	activities := apiSecured.Group("/activities")
 	{
 		activities.POST("", activityCtrl.CreateActivity)
@@ -257,9 +244,7 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb database.RedisInterface, cfg *
 		activities.DELETE("/:id", activityCtrl.DeleteActivity)
 	}
 
-	// ==================== PHASE 6: TRAVEL & MOBILIZATION ====================
-
-	// Phase 6 Initialization
+	// Phase 6
 	transportRepo := repository.NewTransportRepository(db)
 	travelScheduleRepo := repository.NewTravelScheduleRepository(db)
 	travelAssignmentRepo := repository.NewTravelAssignmentRepository(db)
@@ -268,19 +253,18 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb database.RedisInterface, cfg *
 	travelScheduleRepo.EnsureIndexes(context.Background())
 	travelAssignmentRepo.EnsureIndexes(context.Background())
 
-	// FIX 2: 6 parameters (NO vesselRepo)
 	travelSvc := service.NewTravelService(
 		transportRepo,
 		travelScheduleRepo,
 		travelAssignmentRepo,
 		activityRepo,
 		personnelRepo,
+		vesselRepo,
 		compSvc,
 	)
 
 	travelCtrl := controllers.NewTravelController(travelSvc)
 
-	// Transport Routes
 	transports := apiSecured.Group("/transports")
 	{
 		transports.POST("", travelCtrl.CreateTransport)
@@ -290,7 +274,6 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb database.RedisInterface, cfg *
 		transports.DELETE("/:id", travelCtrl.DeleteTransport)
 	}
 
-	// Travel Schedule Routes
 	travel := apiSecured.Group("/travel")
 	{
 		travel.POST("/schedules", travelCtrl.CreateTravelSchedule)
@@ -304,9 +287,7 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb database.RedisInterface, cfg *
 		travel.GET("/my-travels", travelCtrl.GetMyTravels)
 	}
 
-	// ==================== PHASE 7: MINIMUM MANNING MODE ====================
-
-	// Phase 7 Initialization
+	// Phase 7
 	mmRepo := repository.NewMinimumManningRepository(db)
 	mmRepo.EnsureIndexes(context.Background())
 
@@ -322,7 +303,6 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb database.RedisInterface, cfg *
 
 	mmCtrl := controllers.NewMinimumManningController(mmSvc)
 
-	// Minimum Manning Routes
 	manning := apiSecured.Group("/minimum-manning")
 	{
 		manning.POST("/activate", mmCtrl.Activate)
@@ -331,9 +311,7 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb database.RedisInterface, cfg *
 		manning.GET("/history", mmCtrl.GetEventHistory)
 	}
 
-	// ==================== PHASE 8: DASHBOARD & REPORTING ====================
-
-	// Dashboard Service
+	// Phase 8
 	dashboardSvc := service.NewDashboardService(
 		vesselRepo,
 		activityRepo,
@@ -347,7 +325,6 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb database.RedisInterface, cfg *
 	)
 	dashboardCtrl := controllers.NewDashboardController(dashboardSvc)
 
-	// Report Service
 	reportSvc := service.NewReportService(
 		vesselRepo,
 		activityRepo,
@@ -357,13 +334,11 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb database.RedisInterface, cfg *
 	)
 	reportCtrl := controllers.NewReportController(reportSvc)
 
-	// Dashboard Routes
 	dashboard := apiSecured.Group("/dashboard")
 	{
 		dashboard.GET("", dashboardCtrl.GetDashboard)
 	}
 
-	// Report Routes
 	reports := apiSecured.Group("/reports")
 	{
 		reports.GET("/daily", reportCtrl.DailyPOBReport)

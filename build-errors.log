@@ -1,0 +1,2 @@
+# github.com/codingninja/pob-management/internal/delivery/http/routes
+internal\delivery\http\routes\routes.go:141:85: cannot use rdb (variable of interface type database.RedisInterface) as *redis.Client value in argument to service.NewVesselService

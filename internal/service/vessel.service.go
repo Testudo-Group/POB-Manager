@@ -23,7 +23,12 @@ type VesselService struct {
 	redis          *redis.Client
 }
 
-func NewVesselService(repo *repository.VesselRepository, assignmentRepo *repository.RoomAssignmentRepository, eventRepo *repository.VesselEventRepository, rdb *redis.Client) *VesselService {
+func NewVesselService(
+	repo *repository.VesselRepository,
+	assignmentRepo *repository.RoomAssignmentRepository,
+	eventRepo *repository.VesselEventRepository,
+	rdb *redis.Client,
+) *VesselService {
 	return &VesselService{
 		repo:           repo,
 		assignmentRepo: assignmentRepo,
@@ -111,14 +116,13 @@ func (s *VesselService) GetRealTimePOB(ctx context.Context, vesselID bson.Object
 	val, err := s.redis.Get(ctx, key).Int()
 	if err != nil {
 		if err == redis.Nil {
-			return 0, nil // Key doesn't exist yet, POB is 0
+			return 0, nil
 		}
 		return 0, err
 	}
 	return val, nil
 }
 
-// IncrementPOB atomic operation. Checks against capacity.
 func (s *VesselService) IncrementPOB(ctx context.Context, vesselID bson.ObjectID) error {
 	vessel, err := s.repo.FindByID(ctx, vesselID)
 	if err != nil {
@@ -126,10 +130,7 @@ func (s *VesselService) IncrementPOB(ctx context.Context, vesselID bson.ObjectID
 	}
 
 	key := fmt.Sprintf("vessel:%s:pob", vesselID.Hex())
-	
-	// Transaction to check limit before incrementing, or we can just fetch and then INC
-	// A pure script is atomic, but for Go we can do a quick check, then INCR
-	
+
 	currentPOB, _ := s.GetRealTimePOB(ctx, vesselID)
 	if currentPOB >= vessel.POBCapacity {
 		return ErrVesselCapacityExceeded
@@ -141,9 +142,8 @@ func (s *VesselService) IncrementPOB(ctx context.Context, vesselID bson.ObjectID
 
 func (s *VesselService) DecrementPOB(ctx context.Context, vesselID bson.ObjectID) error {
 	key := fmt.Sprintf("vessel:%s:pob", vesselID.Hex())
-	
+
 	val, err := s.redis.Decr(ctx, key).Result()
-	// Prevent negative POB
 	if val < 0 {
 		s.redis.Set(ctx, key, 0, 0)
 	}

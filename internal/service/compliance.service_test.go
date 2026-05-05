@@ -29,7 +29,7 @@ func (m *mockRoleReader) FindByID(ctx context.Context, id bson.ObjectID) (*domai
 	if role, ok := m.roles[id]; ok {
 		return role, nil
 	}
-	return nil, nil // Or an error, but nil err mimics "not found ignored" in service
+	return nil, nil
 }
 
 type mockCertTypeReader struct {
@@ -74,7 +74,7 @@ func TestComplianceService_CheckCompliance(t *testing.T) {
 				return &mockPersonnelReader{
 						personnel: &domain.Personnel{
 							ID:              personnelID,
-							OffshoreRoleIDs: []bson.ObjectID{}, // Empty
+							OffshoreRoleIDs: []string{}, // FIXED: Use []string
 						},
 					},
 					&mockRoleReader{},
@@ -82,7 +82,7 @@ func TestComplianceService_CheckCompliance(t *testing.T) {
 					&mockCertTypeReader{}
 			},
 			expectedStatus:  "Non-Compliant (No Role Assigned)",
-			expectedMissing: 1, // "NO_ROLE_ASSIGNED"
+			expectedMissing: 1,
 		},
 		{
 			name: "Fully Compliant - Has Required Certificate",
@@ -90,7 +90,7 @@ func TestComplianceService_CheckCompliance(t *testing.T) {
 				return &mockPersonnelReader{
 						personnel: &domain.Personnel{
 							ID:              personnelID,
-							OffshoreRoleIDs: []bson.ObjectID{roleID},
+							OffshoreRoleIDs: []string{roleID.Hex()}, // FIXED: Convert ObjectID to string with .Hex()
 						},
 					},
 					&mockRoleReader{
@@ -105,7 +105,7 @@ func TestComplianceService_CheckCompliance(t *testing.T) {
 						certs: []domain.Certificate{
 							{
 								CertificateType: "BOSIET",
-								ExpiresAt:       now.Add(60 * 24 * time.Hour), // 60 days
+								ExpiresAt:       now.Add(60 * 24 * time.Hour),
 								Status:          domain.CertificateStatusValid,
 							},
 						},
@@ -124,7 +124,7 @@ func TestComplianceService_CheckCompliance(t *testing.T) {
 				return &mockPersonnelReader{
 						personnel: &domain.Personnel{
 							ID:              personnelID,
-							OffshoreRoleIDs: []bson.ObjectID{roleID},
+							OffshoreRoleIDs: []string{roleID.Hex()}, // FIXED: Convert ObjectID to string
 						},
 					},
 					&mockRoleReader{
@@ -136,7 +136,7 @@ func TestComplianceService_CheckCompliance(t *testing.T) {
 						},
 					},
 					&mockCertReader{
-						certs: []domain.Certificate{}, // Empty, none uploaded
+						certs: []domain.Certificate{},
 					},
 					&mockCertTypeReader{
 						types: map[bson.ObjectID]*domain.CertificateType{
@@ -153,7 +153,7 @@ func TestComplianceService_CheckCompliance(t *testing.T) {
 				return &mockPersonnelReader{
 						personnel: &domain.Personnel{
 							ID:              personnelID,
-							OffshoreRoleIDs: []bson.ObjectID{roleID},
+							OffshoreRoleIDs: []string{roleID.Hex()}, // FIXED: Convert ObjectID to string
 						},
 					},
 					&mockRoleReader{
@@ -168,7 +168,7 @@ func TestComplianceService_CheckCompliance(t *testing.T) {
 						certs: []domain.Certificate{
 							{
 								CertificateType: "BOSIET",
-								ExpiresAt:       now.Add(-2 * 24 * time.Hour), // Expired 2 days ago
+								ExpiresAt:       now.Add(-2 * 24 * time.Hour),
 								Status:          domain.CertificateStatusExpired,
 							},
 						},
@@ -180,7 +180,7 @@ func TestComplianceService_CheckCompliance(t *testing.T) {
 					}
 			},
 			expectedStatus:   "Non-Compliant",
-			expectedMissing:  1, // Counted as missing because it's expired and rejected from active map
+			expectedMissing:  1,
 			expectedExpired:  1,
 		},
 		{
@@ -189,7 +189,7 @@ func TestComplianceService_CheckCompliance(t *testing.T) {
 				return &mockPersonnelReader{
 						personnel: &domain.Personnel{
 							ID:              personnelID,
-							OffshoreRoleIDs: []bson.ObjectID{roleID},
+							OffshoreRoleIDs: []string{roleID.Hex()}, // FIXED: Convert ObjectID to string
 						},
 					},
 					&mockRoleReader{
@@ -204,7 +204,7 @@ func TestComplianceService_CheckCompliance(t *testing.T) {
 						certs: []domain.Certificate{
 							{
 								CertificateType: "BOSIET",
-								ExpiresAt:       now.Add(10 * 24 * time.Hour), // Expiring in 10 days
+								ExpiresAt:       now.Add(10 * 24 * time.Hour),
 								Status:          domain.CertificateStatusValid,
 							},
 						},
@@ -216,7 +216,7 @@ func TestComplianceService_CheckCompliance(t *testing.T) {
 					}
 			},
 			expectedStatus:   "Compliant",
-			expectedExpiring: 1, // Will be flagged for the basic email alert!
+			expectedExpiring: 1,
 		},
 	}
 
