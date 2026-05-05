@@ -15,7 +15,6 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
-// Changed: *redis.Client → database.RedisInterface
 func Setup(r *gin.Engine, db *mongo.Database, rdb database.RedisInterface, cfg *config.Config) {
 
 	r.GET("/health", func(c *gin.Context) {
@@ -125,6 +124,8 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb database.RedisInterface, cfg *
 		notifications.PATCH("/:id/read", notifCtrl.MarkAsRead)
 	}
 
+	// ==================== PHASE 3: VESSEL & ROOM MANAGEMENT ====================
+
 	// Phase 3 Initialization
 	vesselRepo := repository.NewVesselRepository(db)
 	roomRepo := repository.NewRoomRepository(db)
@@ -134,6 +135,7 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb database.RedisInterface, cfg *
 	roomRepo.EnsureIndexes(context.Background())
 	roomAssignRepo.EnsureIndexes(context.Background())
 
+	// FIX 1: 3 parameters (no VesselEventRepository)
 	vesselSvc := service.NewVesselService(vesselRepo, roomAssignRepo, rdb)
 	roomSvc := service.NewRoomService(roomRepo, roomAssignRepo, vesselSvc, compSvc)
 
@@ -266,6 +268,7 @@ func Setup(r *gin.Engine, db *mongo.Database, rdb database.RedisInterface, cfg *
 	travelScheduleRepo.EnsureIndexes(context.Background())
 	travelAssignmentRepo.EnsureIndexes(context.Background())
 
+	// FIX 2: 6 parameters (NO vesselRepo)
 	travelSvc := service.NewTravelService(
 		transportRepo,
 		travelScheduleRepo,
