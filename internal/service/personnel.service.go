@@ -25,15 +25,16 @@ func NewPersonnelService(repo *repository.PersonnelRepository, roleRepo *reposit
 }
 
 type CreatePersonnelInput struct {
-	EmployeeNumber    string            `json:"employee_number" validate:"required"`
-	FirstName         string            `json:"first_name" validate:"required"`
-	LastName          string            `json:"last_name" validate:"required"`
-	Email             string            `json:"email" validate:"required,email"`
-	PhoneNumber       string            `json:"phone_number"`
-	Nationality       string            `json:"nationality"`
-	Company           string            `json:"company"`
-	PrimaryDiscipline string            `json:"primary_discipline"`
-	OffshoreRoleIDs   []bson.ObjectID   `json:"offshore_role_ids"`
+	EmployeeNumber    string          `json:"employee_number" validate:"required"`
+	FirstName         string          `json:"first_name" validate:"required"`
+	LastName          string          `json:"last_name" validate:"required"`
+	Email             string          `json:"email" validate:"required,email"`
+	PhoneNumber       string          `json:"phone_number"`
+	Nationality       string          `json:"nationality"`
+	Company           string          `json:"company"`
+	PrimaryDiscipline string          `json:"primary_discipline"`
+	OffshoreRoleIDs   []bson.ObjectID `json:"offshore_role_ids"`
+	HomeBaseVesselID  *bson.ObjectID  `json:"home_base_vessel_id"`
 }
 
 func (s *PersonnelService) Create(ctx context.Context, input CreatePersonnelInput) (*domain.Personnel, error) {
@@ -56,6 +57,7 @@ func (s *PersonnelService) Create(ctx context.Context, input CreatePersonnelInpu
 		Company:           input.Company,
 		PrimaryDiscipline: input.PrimaryDiscipline,
 		OffshoreRoleIDs:   input.OffshoreRoleIDs,
+		HomeBaseVesselID:  input.HomeBaseVesselID,
 		CurrentStatus:     domain.PersonnelStatusAvailable,
 		IsActive:          true,
 		CreatedAt:         now,
@@ -100,6 +102,7 @@ func (s *PersonnelService) Update(ctx context.Context, id bson.ObjectID, input C
 	p.Company = input.Company
 	p.PrimaryDiscipline = input.PrimaryDiscipline
 	p.OffshoreRoleIDs = input.OffshoreRoleIDs
+	p.HomeBaseVesselID = input.HomeBaseVesselID
 	p.UpdatedAt = time.Now()
 
 	err = s.repo.Update(ctx, p)

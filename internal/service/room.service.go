@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/codingninja/pob-management/internal/domain"
@@ -33,27 +35,43 @@ func NewRoomService(r *repository.RoomRepository, a *repository.RoomAssignmentRe
 }
 
 type CreateRoomInput struct {
-	VesselID bson.ObjectID `json:"vessel_id" validate:"required"`
-	Name     string        `json:"name" validate:"required"`
-	Code     string        `json:"code" validate:"required"`
-	Deck     string        `json:"deck"`
-	Category string        `json:"category"` // "Dedicated" vs "Transient"
-	Capacity int           `json:"capacity" validate:"min=1"`
+	VesselID    bson.ObjectID `json:"vessel_id"`
+	RoomName    string        `json:"room_name"`
+	RoomCategory string       `json:"room_category"`
+	LocationDeck string       `json:"location_deck"`
+	Capacity    int           `json:"capacity"`
+	Description string        `json:"description"`
+}
+
+func roomCode(name string, id bson.ObjectID) string {
+	slug := strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(name), " ", "-"))
+	if slug == "" {
+		slug = "ROOM"
+	}
+	return fmt.Sprintf("%s-%s", slug, id.Hex()[18:])
 }
 
 func (s *RoomService) Create(ctx context.Context, input CreateRoomInput) (*domain.Room, error) {
+	if strings.TrimSpace(input.RoomName) == "" {
+		return nil, errors.New("room name is required")
+	}
+	if input.Capacity < 1 {
+		return nil, errors.New("capacity must be at least 1")
+	}
 	now := time.Now()
+	id := bson.NewObjectID()
 	r := &domain.Room{
-		ID:        bson.NewObjectID(),
-		VesselID:  input.VesselID,
-		Name:      input.Name,
-		Code:      input.Code,
-		Deck:      input.Deck,
-		Category:  input.Category,
-		Capacity:  input.Capacity,
-		Status:    domain.RoomStatusAvailable,
-		CreatedAt: now,
-		UpdatedAt: now,
+		ID:          id,
+		VesselID:    input.VesselID,
+		Name:        input.RoomName,
+		Code:        roomCode(input.RoomName, id),
+		Deck:        input.LocationDeck,
+		Category:    input.RoomCategory,
+		Capacity:    input.Capacity,
+		Description: input.Description,
+		Status:      domain.RoomStatusAvailable,
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 
 	err := s.roomRepo.Create(ctx, r)
@@ -137,7 +155,17 @@ func (s *RoomService) Assign(ctx context.Context, input AssignRoomInput) (*domai
 }
 
 func (s *RoomService) ListByVessel(ctx context.Context, vesselID bson.ObjectID) ([]domain.Room, error) {
-	return s.roomRepo.FindByVessel(ctx, vesselID)
+	rooms, err := s.roomRepo.FindByVessel(ctx, vesselID)
+	if err != nil {
+		return nil, err
+	}
+	for i, room := range rooms {
+		active, err := s.assignmentRepo.FindActiveByRoom(ctx, room.ID)
+		if err == nil {
+			rooms[i].CurrentOccupancy = len(active)
+		}
+	}
+	return rooms, nil
 }
 
 func (s *RoomService) FindByID(ctx context.Context, id bson.ObjectID) (*domain.Room, error) {
@@ -150,11 +178,21 @@ func (s *RoomService) Update(ctx context.Context, id bson.ObjectID, input Create
 		return nil, err
 	}
 
-	r.Name = input.Name
-	r.Code = input.Code
-	r.Deck = input.Deck
-	r.Category = input.Category
-	r.Capacity = input.Capacity
+	if strings.TrimSpace(input.RoomName) != "" {
+		r.Name = input.RoomName
+	}
+	if input.LocationDeck != "" {
+		r.Deck = input.LocationDeck
+	}
+	if input.RoomCategory != "" {
+		r.Category = input.RoomCategory
+	}
+	if input.Capacity > 0 {
+		r.Capacity = input.Capacity
+	}
+	if input.Description != "" {
+		r.Description = input.Description
+	}
 	r.UpdatedAt = time.Now()
 
 	err = s.roomRepo.Update(ctx, r)
@@ -172,4 +210,21 @@ func (s *RoomService) Delete(ctx context.Context, id bson.ObjectID) error {
 
 func (s *RoomService) GetOccupants(ctx context.Context, roomID bson.ObjectID) ([]domain.RoomAssignment, error) {
 	return s.assignmentRepo.FindActiveByRoom(ctx, roomID)
+}
+
+func (s *RoomService) ListByDeck(ctx context.Context, vesselID bson.ObjectID) (map[string][]domain.Room, error) {
+	rooms, err := s.ListByVessel(ctx, vesselID)
+	if err != nil {
+		return nil, err
+	}
+
+	grouped := make(map[string][]domain.Room)
+	for _, room := range rooms {
+		deck := room.Deck
+		if deck == "" {
+			deck = "Unassigned"
+		}
+		grouped[deck] = append(grouped[deck], room)
+	}
+	return grouped, nil
 }

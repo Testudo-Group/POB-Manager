@@ -1,9 +1,13 @@
 package controllers
 
 import (
+	"errors"
 	"net/http"
+	"strconv"
 	"time"
 
+	"github.com/codingninja/pob-management/internal/domain"
+	"github.com/codingninja/pob-management/internal/repository"
 	"github.com/codingninja/pob-management/internal/service"
 	"github.com/codingninja/pob-management/pkg/response"
 	"github.com/gin-gonic/gin"
@@ -28,7 +32,7 @@ func (c *TravelController) CreateTransport(ctx *gin.Context) {
 
 	transport, err := c.svc.CreateTransport(ctx.Request.Context(), req)
 	if err != nil {
-		response.Error(ctx, http.StatusInternalServerError, "failed to create transport")
+		c.handleTravelError(ctx, err, "failed to create transport")
 		return
 	}
 
@@ -51,15 +55,13 @@ func (c *TravelController) GetTransport(ctx *gin.Context) {
 		response.Error(ctx, http.StatusBadRequest, "invalid transport id")
 		return
 	}
+
 	transport, err := c.svc.GetTransport(ctx.Request.Context(), id)
 	if err != nil {
-		if err == service.ErrTransportNotFound {
-			response.Error(ctx, http.StatusNotFound, "transport not found")
-			return
-		}
-		response.Error(ctx, http.StatusInternalServerError, "failed to get transport")
+		c.handleTravelError(ctx, err, "failed to get transport")
 		return
 	}
+
 	response.Success(ctx, http.StatusOK, "transport retrieved successfully", transport)
 }
 
@@ -69,16 +71,19 @@ func (c *TravelController) UpdateTransport(ctx *gin.Context) {
 		response.Error(ctx, http.StatusBadRequest, "invalid transport id")
 		return
 	}
+
 	var req service.CreateTransportInput
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		response.Error(ctx, http.StatusBadRequest, err.Error())
 		return
 	}
+
 	transport, err := c.svc.UpdateTransport(ctx.Request.Context(), id, req)
 	if err != nil {
-		response.Error(ctx, http.StatusInternalServerError, "failed to update transport")
+		c.handleTravelError(ctx, err, "failed to update transport")
 		return
 	}
+
 	response.Success(ctx, http.StatusOK, "transport updated successfully", transport)
 }
 
@@ -103,11 +108,13 @@ func (c *TravelController) CreateTravelSchedule(ctx *gin.Context) {
 		response.Error(ctx, http.StatusBadRequest, err.Error())
 		return
 	}
+
 	schedule, err := c.svc.CreateTravelSchedule(ctx.Request.Context(), req)
 	if err != nil {
-		response.Error(ctx, http.StatusInternalServerError, "failed to create travel schedule")
+		c.handleTravelError(ctx, err, "failed to create travel schedule")
 		return
 	}
+
 	response.Success(ctx, http.StatusCreated, "travel schedule created successfully", schedule)
 }
 
@@ -117,21 +124,30 @@ func (c *TravelController) GetTravelSchedule(ctx *gin.Context) {
 		response.Error(ctx, http.StatusBadRequest, "invalid schedule id")
 		return
 	}
+
 	schedule, err := c.svc.GetTravelSchedule(ctx.Request.Context(), id)
 	if err != nil {
-		response.Error(ctx, http.StatusInternalServerError, "failed to get travel schedule")
+		c.handleTravelError(ctx, err, "failed to get travel schedule")
 		return
 	}
+
 	response.Success(ctx, http.StatusOK, "travel schedule retrieved successfully", schedule)
 }
 
 func (c *TravelController) ListUpcomingSchedules(ctx *gin.Context) {
-	schedules, err := c.svc.ListUpcomingSchedules(ctx.Request.Context(), 50)
+	input, err := buildTravelScheduleListInput(ctx)
 	if err != nil {
-		response.Error(ctx, http.StatusInternalServerError, "failed to list upcoming schedules")
+		response.Error(ctx, http.StatusBadRequest, err.Error())
 		return
 	}
-	response.Success(ctx, http.StatusOK, "upcoming schedules retrieved successfully", schedules)
+
+	schedules, err := c.svc.ListTravelSchedules(ctx.Request.Context(), input)
+	if err != nil {
+		response.Error(ctx, http.StatusInternalServerError, "failed to list travel schedules")
+		return
+	}
+
+	response.Success(ctx, http.StatusOK, "travel schedules retrieved successfully", schedules)
 }
 
 // Auto-match
@@ -229,7 +245,6 @@ func (c *TravelController) SuggestConsolidation(ctx *gin.Context) {
 // Personnel Travel View
 func (c *TravelController) GetMyTravels(ctx *gin.Context) {
 	userID := ctx.GetString("user_id")
-	// Assuming user ID is linked to personnel ID; for simplicity, we use user ID directly
 	personnelID, _ := bson.ObjectIDFromHex(userID)
 
 	travels, err := c.svc.GetPersonnelTravels(ctx.Request.Context(), personnelID)
@@ -238,4 +253,74 @@ func (c *TravelController) GetMyTravels(ctx *gin.Context) {
 		return
 	}
 	response.Success(ctx, http.StatusOK, "travel schedule retrieved successfully", travels)
+}
+
+func buildTravelScheduleListInput(ctx *gin.Context) (service.ListTravelSchedulesInput, error) {
+	var input service.ListTravelSchedulesInput
+
+	transportID, err := optionalObjectID(ctx.Query("transport_id"))
+	if err != nil {
+		return input, errors.New("invalid transport_id")
+	}
+	input.TransportID = transportID
+
+	vesselID, err := optionalObjectID(ctx.Query("vessel_id"))
+	if err != nil {
+		return input, errors.New("invalid vessel_id")
+	}
+	input.VesselID = vesselID
+
+	originVesselID, err := optionalObjectID(ctx.Query("origin_vessel_id"))
+	if err != nil {
+		return input, errors.New("invalid origin_vessel_id")
+	}
+	input.OriginVesselID = originVesselID
+
+	destinationVesselID, err := optionalObjectID(ctx.Query("destination_vessel_id"))
+	if err != nil {
+		return input, errors.New("invalid destination_vessel_id")
+	}
+	input.DestinationVesselID = destinationVesselID
+
+	if status := ctx.Query("status"); status != "" {
+		parsedStatus := domain.TravelScheduleStatus(status)
+		input.Status = &parsedStatus
+	}
+
+	input.UpcomingOnly = ctx.Query("upcoming_only") == "true"
+	if limit := ctx.Query("limit"); limit != "" {
+		parsedLimit, err := strconv.Atoi(limit)
+		if err != nil || parsedLimit < 0 {
+			return input, errors.New("invalid limit")
+		}
+		input.Limit = parsedLimit
+	}
+
+	return input, nil
+}
+
+func optionalObjectID(raw string) (*bson.ObjectID, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	id, err := bson.ObjectIDFromHex(raw)
+	if err != nil {
+		return nil, err
+	}
+	return &id, nil
+}
+
+func (c *TravelController) handleTravelError(ctx *gin.Context, err error, fallbackMessage string) {
+	switch {
+	case errors.Is(err, service.ErrTransportNotFound):
+		response.Error(ctx, http.StatusNotFound, "transport not found")
+	case errors.Is(err, service.ErrTravelScheduleNotFound):
+		response.Error(ctx, http.StatusNotFound, "travel schedule not found")
+	case errors.Is(err, service.ErrInvalidTravelRoute):
+		response.Error(ctx, http.StatusBadRequest, err.Error())
+	case errors.Is(err, repository.ErrVesselNotFound):
+		response.Error(ctx, http.StatusNotFound, "vessel not found")
+	default:
+		response.Error(ctx, http.StatusInternalServerError, fallbackMessage)
+	}
 }

@@ -190,7 +190,7 @@ All routes are prefixed with `/api/v1`
 | PATCH  | `/transports/:id`                     | Update transport                    | Sys Admin     |
 | DELETE | `/transports/:id`                     | Delete transport                    | Sys Admin     |
 | POST   | `/travel/schedules`                   | Create travel schedule              | Planner       |
-| GET    | `/travel/schedules`                   | List upcoming schedules             | Planner, Personnel |
+| GET    | `/travel/schedules`                   | List travel schedules               | Planner, Personnel |
 | GET    | `/travel/schedules/:id`               | Get schedule details                | Planner       |
 | GET    | `/travel/schedules/:id/assignments`   | Get assigned personnel              | Planner       |
 | POST   | `/travel/match-activities`            | Auto-match activities to transport  | Planner       |
@@ -198,6 +198,9 @@ All routes are prefixed with `/api/v1`
 | GET    | `/travel/alerts`                      | Low utilization alerts              | Planner       |
 | POST   | `/travel/consolidate`                 | Trip consolidation suggestions      | Planner       |
 | GET    | `/travel/my-travels`                  | View own travel schedule            | Personnel     |
+
+Transport payloads can now include `origin_vessel_id` and `destination_vessel_id` so a route can be shown between two vessels.
+`GET /travel/schedules` also supports `transport_id`, `vessel_id`, `origin_vessel_id`, `destination_vessel_id`, `status`, `upcoming_only`, and `limit` query parameters.
 
 ### Minimum Manning — `/api/v1/minimum-manning`
 | Method | Endpoint       | Description                         | Access                |

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/codingninja/pob-management/internal/domain"
@@ -49,10 +50,24 @@ type CreateRotationScheduleInput struct {
 	Name            string        `json:"name" validate:"required"`
 	DaysOn          int           `json:"days_on" validate:"required,min=1"`
 	DaysOff         int           `json:"days_off" validate:"required,min=1"`
-	CycleAnchorDate time.Time     `json:"cycle_anchor_date" validate:"required"`
+	CycleAnchorDate string        `json:"cycle_anchor_date" validate:"required"`
+}
+
+func parseFlexibleDate(s string) (time.Time, error) {
+	for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05", "2006-01-02"} {
+		if t, err := time.Parse(layout, s); err == nil {
+			return t, nil
+		}
+	}
+	return time.Time{}, fmt.Errorf("cannot parse date %q", s)
 }
 
 func (s *RotationService) CreateSchedule(ctx context.Context, input CreateRotationScheduleInput) (*domain.RotationSchedule, error) {
+	anchorDate, err := parseFlexibleDate(input.CycleAnchorDate)
+	if err != nil {
+		return nil, fmt.Errorf("invalid cycle_anchor_date: %w", err)
+	}
+
 	now := time.Now()
 	schedule := &domain.RotationSchedule{
 		ID:              bson.NewObjectID(),
@@ -61,14 +76,13 @@ func (s *RotationService) CreateSchedule(ctx context.Context, input CreateRotati
 		Name:            input.Name,
 		DaysOn:          input.DaysOn,
 		DaysOff:         input.DaysOff,
-		CycleAnchorDate: input.CycleAnchorDate,
+		CycleAnchorDate: anchorDate,
 		IsActive:        true,
 		CreatedAt:       now,
 		UpdatedAt:       now,
 	}
 
-	err := s.scheduleRepo.Create(ctx, schedule)
-	if err != nil {
+	if err = s.scheduleRepo.Create(ctx, schedule); err != nil {
 		return nil, err
 	}
 	return schedule, nil
@@ -214,6 +228,101 @@ func (s *RotationService) GetBackToBackPairsByRole(ctx context.Context, roleID, 
 	return s.backToBackRepo.FindActiveByRole(ctx, roleID, vesselID)
 }
 
+var ErrNoPairForHandover = errors.New("no active back-to-back pair found for this assignment")
+
+type ShiftHandoverResult struct {
+	EndedAssignment *domain.RoleAssignment `json:"ended_assignment"`
+	NewAssignment   *domain.RoleAssignment `json:"new_assignment"`
+	ReliefPersonnel bson.ObjectID          `json:"relief_personnel_id"`
+}
+
+// TriggerShiftHandover ends the current personnel's assignment and activates the relief personnel.
+func (s *RotationService) TriggerShiftHandover(ctx context.Context, assignmentID bson.ObjectID, handoverAt time.Time) (*ShiftHandoverResult, error) {
+	assignment, err := s.assignmentRepo.FindByID(ctx, assignmentID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Find back-to-back pair where outgoing personnel is primary
+	pairs, err := s.backToBackRepo.FindByPersonnel(ctx, assignment.PersonnelID)
+	if err != nil {
+		return nil, err
+	}
+
+	var activePair *domain.BackToBackPair
+	for i := range pairs {
+		p := &pairs[i]
+		if p.OffshoreRoleID == assignment.OffshoreRoleID && p.VesselID == assignment.VesselID {
+			activePair = p
+			break
+		}
+	}
+
+	if activePair == nil {
+		return nil, ErrNoPairForHandover
+	}
+
+	reliefID := activePair.ReliefPersonnelID
+	if activePair.PrimaryPersonnelID != assignment.PersonnelID {
+		reliefID = activePair.PrimaryPersonnelID
+	}
+
+	// End current assignment
+	assignment.Status = domain.RoleAssignmentStatusCompleted
+	assignment.EffectiveTo = &handoverAt
+	assignment.UpdatedAt = time.Now()
+	if err := s.assignmentRepo.Update(ctx, assignment); err != nil {
+		return nil, err
+	}
+
+	// Create new assignment for relief personnel
+	now := time.Now()
+	newAssignment := &domain.RoleAssignment{
+		ID:                 bson.NewObjectID(),
+		OffshoreRoleID:     assignment.OffshoreRoleID,
+		PersonnelID:        reliefID,
+		VesselID:           assignment.VesselID,
+		RotationScheduleID: assignment.RotationScheduleID,
+		RoomID:             assignment.RoomID,
+		AssignedByUserID:   assignment.AssignedByUserID,
+		EffectiveFrom:      handoverAt,
+		Status:             domain.RoleAssignmentStatusActive,
+		CreatedAt:          now,
+		UpdatedAt:          now,
+	}
+	if err := s.assignmentRepo.Create(ctx, newAssignment); err != nil {
+		return nil, err
+	}
+
+	// Swap primary and relief in the pair
+	activePair.PrimaryPersonnelID = reliefID
+	activePair.ReliefPersonnelID = assignment.PersonnelID
+	activePair.UpdatedAt = now
+	_ = s.backToBackRepo.Update(ctx, activePair)
+
+	// Update personnel statuses
+	s.personnelRepo.Update(ctx, &domain.Personnel{
+		ID:            reliefID,
+		CurrentStatus: domain.PersonnelStatusOnboard,
+		UpdatedAt:     now,
+	})
+
+	activeAssignments, _ := s.assignmentRepo.FindActiveByPersonnel(ctx, assignment.PersonnelID)
+	if len(activeAssignments) == 0 {
+		s.personnelRepo.Update(ctx, &domain.Personnel{
+			ID:            assignment.PersonnelID,
+			CurrentStatus: domain.PersonnelStatusAvailable,
+			UpdatedAt:     now,
+		})
+	}
+
+	return &ShiftHandoverResult{
+		EndedAssignment: assignment,
+		NewAssignment:   newAssignment,
+		ReliefPersonnel: reliefID,
+	}, nil
+}
+
 // Calculate next rotation dates
 func (s *RotationService) CalculateNextRotation(ctx context.Context, scheduleID bson.ObjectID, fromDate time.Time) (time.Time, time.Time, error) {
 	schedule, err := s.scheduleRepo.FindByID(ctx, scheduleID)
@@ -240,4 +349,84 @@ func (s *RotationService) CalculateNextRotation(ctx context.Context, scheduleID 
 	}
 
 	return nextOnDate, nextOffDate, nil
+}
+
+// ActiveAssignmentSummary is the enriched view returned to the frontend.
+type ActiveAssignmentSummary struct {
+	AssignmentID   string `json:"assignment_id"`
+	PersonnelID    string `json:"personnel_id"`
+	PersonnelName  string `json:"personnel_name"`
+	RoleID         string `json:"role_id"`
+	RoleName       string `json:"role_name"`
+	VesselID       string `json:"vessel_id"`
+	EffectiveFrom  string `json:"effective_from"`
+}
+
+func (s *RotationService) GetActiveAssignmentsForVessel(ctx context.Context, vesselID bson.ObjectID) ([]ActiveAssignmentSummary, error) {
+	assignments, err := s.assignmentRepo.FindActiveByVessel(ctx, vesselID)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]ActiveAssignmentSummary, 0, len(assignments))
+	for _, a := range assignments {
+		summary := ActiveAssignmentSummary{
+			AssignmentID:  a.ID.Hex(),
+			PersonnelID:   a.PersonnelID.Hex(),
+			RoleID:        a.OffshoreRoleID.Hex(),
+			VesselID:      a.VesselID.Hex(),
+			EffectiveFrom: a.EffectiveFrom.Format("2006-01-02"),
+		}
+
+		if p, err := s.personnelRepo.FindByID(ctx, a.PersonnelID); err == nil {
+			summary.PersonnelName = p.FirstName + " " + p.LastName
+		}
+		if r, err := s.roleRepo.FindByID(ctx, a.OffshoreRoleID); err == nil {
+			summary.RoleName = r.Name
+		}
+
+		result = append(result, summary)
+	}
+	return result, nil
+}
+
+// EnrichedBackToBackPair resolves personnel and role names in a B2B pair.
+type EnrichedBackToBackPair struct {
+	ID               string `json:"id"`
+	PrimaryID        string `json:"primary_personnel_id"`
+	PrimaryName      string `json:"primary_personnel_name"`
+	ReliefID         string `json:"relief_personnel_id"`
+	ReliefName       string `json:"relief_personnel_name"`
+	RoleID           string `json:"role_id"`
+	RoleName         string `json:"role_name"`
+	VesselID         string `json:"vessel_id"`
+}
+
+func (s *RotationService) GetEnrichedBackToBackPairs(ctx context.Context, roleID, vesselID bson.ObjectID) ([]EnrichedBackToBackPair, error) {
+	pairs, err := s.backToBackRepo.FindActiveByRole(ctx, roleID, vesselID)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]EnrichedBackToBackPair, 0, len(pairs))
+	for _, p := range pairs {
+		ep := EnrichedBackToBackPair{
+			ID:       p.ID.Hex(),
+			PrimaryID: p.PrimaryPersonnelID.Hex(),
+			ReliefID:  p.ReliefPersonnelID.Hex(),
+			RoleID:    p.OffshoreRoleID.Hex(),
+			VesselID:  p.VesselID.Hex(),
+		}
+		if person, err := s.personnelRepo.FindByID(ctx, p.PrimaryPersonnelID); err == nil {
+			ep.PrimaryName = person.FirstName + " " + person.LastName
+		}
+		if person, err := s.personnelRepo.FindByID(ctx, p.ReliefPersonnelID); err == nil {
+			ep.ReliefName = person.FirstName + " " + person.LastName
+		}
+		if role, err := s.roleRepo.FindByID(ctx, p.OffshoreRoleID); err == nil {
+			ep.RoleName = role.Name
+		}
+		result = append(result, ep)
+	}
+	return result, nil
 }

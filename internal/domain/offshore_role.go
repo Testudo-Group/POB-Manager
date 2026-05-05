@@ -30,7 +30,7 @@ type OffshoreRole struct {
 	RequiresRoom             bool               `bson:"requires_room" json:"requires_room"`
 	MinimumRequiredCount     int                `bson:"minimum_required_count" json:"minimum_required_count"`
 	Status                   OffshoreRoleStatus `bson:"status" json:"status"`
-	RequiredCertificateTypes []bson.ObjectID    `bson:"required_certificate_types" json:"required_certificate_types"`
+	RequiredCertificateTypes []string           `bson:"required_certificate_types" json:"required_certificate_types"`
 	CreatedAt                time.Time          `bson:"created_at" json:"created_at"`
 	UpdatedAt                time.Time          `bson:"updated_at" json:"updated_at"`
 }

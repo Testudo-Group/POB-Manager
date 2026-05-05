@@ -31,6 +31,7 @@ type Personnel struct {
 	OffshoreRoleIDs   []bson.ObjectID   `bson:"offshore_role_ids" json:"offshore_role_ids"`
 	CurrentStatus     PersonnelStatus   `bson:"current_status" json:"current_status"`
 	CurrentVesselID   *bson.ObjectID    `bson:"current_vessel_id,omitempty" json:"current_vessel_id,omitempty"`
+	HomeBaseVesselID  *bson.ObjectID    `bson:"home_base_vessel_id,omitempty" json:"home_base_vessel_id,omitempty"`
 	IsActive          bool              `bson:"is_active" json:"is_active"`
 	CreatedAt         time.Time         `bson:"created_at" json:"created_at"`
 	UpdatedAt         time.Time         `bson:"updated_at" json:"updated_at"`

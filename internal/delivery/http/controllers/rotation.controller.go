@@ -162,13 +162,67 @@ func (c *RotationController) GetBackToBackPairs(ctx *gin.Context) {
 		return
 	}
 
-	pairs, err := c.svc.GetBackToBackPairsByRole(ctx.Request.Context(), roleID, vesselID)
+	pairs, err := c.svc.GetEnrichedBackToBackPairs(ctx.Request.Context(), roleID, vesselID)
 	if err != nil {
 		response.Error(ctx, http.StatusInternalServerError, "failed to get back-to-back pairs")
 		return
 	}
 
 	response.Success(ctx, http.StatusOK, "back-to-back pairs retrieved successfully", pairs)
+}
+
+func (c *RotationController) GetActiveAssignments(ctx *gin.Context) {
+	vesselID, err := bson.ObjectIDFromHex(ctx.Param("vesselId"))
+	if err != nil {
+		response.Error(ctx, http.StatusBadRequest, "invalid vessel id")
+		return
+	}
+
+	assignments, err := c.svc.GetActiveAssignmentsForVessel(ctx.Request.Context(), vesselID)
+	if err != nil {
+		response.Error(ctx, http.StatusInternalServerError, "failed to get active assignments")
+		return
+	}
+
+	response.Success(ctx, http.StatusOK, "active assignments retrieved successfully", assignments)
+}
+
+// Shift Handover
+type ShiftHandoverRequest struct {
+	HandoverAt string `json:"handover_at" binding:"required"`
+}
+
+func (c *RotationController) TriggerShiftHandover(ctx *gin.Context) {
+	assignmentID, err := bson.ObjectIDFromHex(ctx.Param("id"))
+	if err != nil {
+		response.Error(ctx, http.StatusBadRequest, "invalid assignment id")
+		return
+	}
+
+	var req ShiftHandoverRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		response.Error(ctx, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	handoverAt, err := time.Parse(time.RFC3339, req.HandoverAt)
+	if err != nil {
+		response.Error(ctx, http.StatusBadRequest, "invalid handover_at date format")
+		return
+	}
+
+	result, err := c.svc.TriggerShiftHandover(ctx.Request.Context(), assignmentID, handoverAt)
+	if err != nil {
+		switch err {
+		case service.ErrNoPairForHandover:
+			response.Error(ctx, http.StatusConflict, err.Error())
+		default:
+			response.Error(ctx, http.StatusInternalServerError, "failed to trigger shift handover")
+		}
+		return
+	}
+
+	response.Success(ctx, http.StatusOK, "shift handover completed successfully", result)
 }
 
 // Calculate Next Rotation

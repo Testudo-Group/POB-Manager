@@ -19,24 +19,27 @@ var (
 type VesselService struct {
 	repo           *repository.VesselRepository
 	assignmentRepo *repository.RoomAssignmentRepository
+	eventRepo      *repository.VesselEventRepository
 	redis          *redis.Client
 }
 
-func NewVesselService(repo *repository.VesselRepository, assignmentRepo *repository.RoomAssignmentRepository, rdb *redis.Client) *VesselService {
+func NewVesselService(repo *repository.VesselRepository, assignmentRepo *repository.RoomAssignmentRepository, eventRepo *repository.VesselEventRepository, rdb *redis.Client) *VesselService {
 	return &VesselService{
 		repo:           repo,
 		assignmentRepo: assignmentRepo,
+		eventRepo:      eventRepo,
 		redis:          rdb,
 	}
 }
 
 type CreateVesselInput struct {
-	Name                   string `json:"name" validate:"required"`
-	Code                   string `json:"code" validate:"required"`
-	Type                   string `json:"type" validate:"required"`
-	Location               string `json:"location"`
-	POBCapacity            int    `json:"pob_capacity"`
-	MinimumSafePOBCapacity int    `json:"minimum_safe_pob_capacity"`
+	Name                   string   `json:"name" validate:"required"`
+	Code                   string   `json:"code" validate:"required"`
+	Type                   string   `json:"type" validate:"required"`
+	Location               string   `json:"location"`
+	POBCapacity            int      `json:"pob_capacity"`
+	MinimumSafePOBCapacity int      `json:"minimum_safe_pob_capacity"`
+	Decks                  []string `json:"decks"`
 }
 
 func (s *VesselService) Create(ctx context.Context, input CreateVesselInput) (*domain.Vessel, error) {
@@ -50,6 +53,7 @@ func (s *VesselService) Create(ctx context.Context, input CreateVesselInput) (*d
 		POBCapacity:            input.POBCapacity,
 		MinimumSafePOBCapacity: input.MinimumSafePOBCapacity,
 		IsMinimumManningActive: false,
+		Decks:                  input.Decks,
 		Status:                 domain.VesselStatusActive,
 		CreatedAt:              now,
 		UpdatedAt:              now,
@@ -87,6 +91,7 @@ func (s *VesselService) Update(ctx context.Context, id bson.ObjectID, input Crea
 	v.Location = input.Location
 	v.POBCapacity = input.POBCapacity
 	v.MinimumSafePOBCapacity = input.MinimumSafePOBCapacity
+	v.Decks = input.Decks
 	v.UpdatedAt = time.Now()
 
 	err = s.repo.Update(ctx, v)
@@ -147,4 +152,48 @@ func (s *VesselService) DecrementPOB(ctx context.Context, vesselID bson.ObjectID
 
 func (s *VesselService) GetManifest(ctx context.Context, vesselID bson.ObjectID) ([]domain.RoomAssignment, error) {
 	return s.assignmentRepo.FindActiveByVessel(ctx, vesselID)
+}
+
+func (s *VesselService) GetDefault(ctx context.Context) (*domain.Vessel, error) {
+	return s.repo.FindDefault(ctx)
+}
+
+func (s *VesselService) SetDefault(ctx context.Context, id bson.ObjectID) error {
+	return s.repo.SetDefault(ctx, id)
+}
+
+type AddVesselEventInput struct {
+	EventType        domain.VesselEventType `json:"event_type" validate:"required"`
+	Description      string                 `json:"description" validate:"required"`
+	Location         string                 `json:"location"`
+	RecordedByUserID *bson.ObjectID         `json:"recorded_by_user_id"`
+	OccurredAt       *time.Time             `json:"occurred_at"`
+}
+
+func (s *VesselService) AddEvent(ctx context.Context, vesselID bson.ObjectID, input AddVesselEventInput) (*domain.VesselEvent, error) {
+	now := time.Now()
+	occurredAt := now
+	if input.OccurredAt != nil {
+		occurredAt = *input.OccurredAt
+	}
+
+	event := &domain.VesselEvent{
+		ID:               bson.NewObjectID(),
+		VesselID:         vesselID,
+		EventType:        input.EventType,
+		Description:      input.Description,
+		Location:         input.Location,
+		RecordedByUserID: input.RecordedByUserID,
+		OccurredAt:       occurredAt,
+		CreatedAt:        now,
+	}
+
+	if err := s.eventRepo.Create(ctx, event); err != nil {
+		return nil, err
+	}
+	return event, nil
+}
+
+func (s *VesselService) GetTimeline(ctx context.Context, vesselID bson.ObjectID, limit int64) ([]domain.VesselEvent, error) {
+	return s.eventRepo.FindByVessel(ctx, vesselID, limit)
 }

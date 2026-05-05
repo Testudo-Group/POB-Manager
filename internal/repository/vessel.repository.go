@@ -86,15 +86,66 @@ func (r *VesselRepository) Update(ctx context.Context, v *domain.Vessel) error {
 func (r *VesselRepository) Delete(ctx context.Context, id bson.ObjectID) error {
 	filter := bson.M{"_id": id}
 	update := bson.M{"$set": bson.M{"status": domain.VesselStatusInactive}}
-	
+
 	result, err := r.collection.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return err
 	}
-	
+
 	if result.MatchedCount == 0 {
 		return ErrVesselNotFound
 	}
-	
+
+	return nil
+}
+
+func (r *VesselRepository) FindDefault(ctx context.Context) (*domain.Vessel, error) {
+	var v domain.Vessel
+	err := r.collection.FindOne(ctx, bson.M{
+		"is_default": true,
+		"status":     domain.VesselStatusActive,
+	}).Decode(&v)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			// Fall back to first active vessel
+			cursor, findErr := r.collection.Find(ctx, bson.M{"status": domain.VesselStatusActive},
+				options.Find().SetSort(bson.D{{Key: "created_at", Value: 1}}).SetLimit(1))
+			if findErr != nil {
+				return nil, findErr
+			}
+			defer cursor.Close(ctx)
+			if cursor.Next(ctx) {
+				if decodeErr := cursor.Decode(&v); decodeErr != nil {
+					return nil, decodeErr
+				}
+				return &v, nil
+			}
+			return nil, ErrVesselNotFound
+		}
+		return nil, err
+	}
+	return &v, nil
+}
+
+func (r *VesselRepository) SetDefault(ctx context.Context, id bson.ObjectID) error {
+	// Clear existing default
+	_, err := r.collection.UpdateMany(ctx,
+		bson.M{"is_default": true},
+		bson.M{"$set": bson.M{"is_default": false}},
+	)
+	if err != nil {
+		return err
+	}
+
+	result, err := r.collection.UpdateOne(ctx,
+		bson.M{"_id": id},
+		bson.M{"$set": bson.M{"is_default": true}},
+	)
+	if err != nil {
+		return err
+	}
+	if result.MatchedCount == 0 {
+		return ErrVesselNotFound
+	}
 	return nil
 }

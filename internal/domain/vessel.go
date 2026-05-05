@@ -30,6 +30,8 @@ type Vessel struct {
 	POBCapacity            int           `bson:"pob_capacity" json:"pob_capacity"`
 	MinimumSafePOBCapacity int           `bson:"minimum_safe_pob_capacity" json:"minimum_safe_pob_capacity"`
 	IsMinimumManningActive bool          `bson:"is_minimum_manning_active" json:"is_minimum_manning_active"`
+	Decks                  []string      `bson:"decks,omitempty" json:"decks,omitempty"`
+	IsDefault              bool          `bson:"is_default" json:"is_default"`
 	Status                 VesselStatus  `bson:"status" json:"status"`
 	CreatedAt              time.Time     `bson:"created_at" json:"created_at"`
 	UpdatedAt              time.Time     `bson:"updated_at" json:"updated_at"`

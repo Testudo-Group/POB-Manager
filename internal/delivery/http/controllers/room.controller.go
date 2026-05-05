@@ -163,3 +163,20 @@ func (c *RoomController) GetRoomOccupants(ctx *gin.Context) {
 
 	response.Success(ctx, http.StatusOK, "room occupants retrieved successfully", occupants)
 }
+
+func (c *RoomController) GetRoomsByDeck(ctx *gin.Context) {
+	idParam := ctx.Param("id")
+	vesselID, err := bson.ObjectIDFromHex(idParam)
+	if err != nil {
+		response.Error(ctx, http.StatusBadRequest, "invalid vessel id format")
+		return
+	}
+
+	grouped, err := c.svc.ListByDeck(ctx.Request.Context(), vesselID)
+	if err != nil {
+		response.Error(ctx, http.StatusInternalServerError, "failed to get rooms by deck")
+		return
+	}
+
+	response.Success(ctx, http.StatusOK, "rooms by deck retrieved successfully", grouped)
+}

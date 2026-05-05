@@ -70,23 +70,14 @@ func (s *ComplianceService) CheckCompliance(ctx context.Context, personnelID bso
 		}, nil
 	}
 
-	// 2. Aggregate Required Certificate Types
-	requiredTypeMap := make(map[bson.ObjectID]bool)
+	// 2. Aggregate Required Certificate Type codes directly
+	requiredCodesMap := make(map[string]bool)
 	for _, roleID := range personnel.OffshoreRoleIDs {
 		role, err := s.roleRepo.FindByID(ctx, roleID)
 		if err == nil {
-			for _, ctID := range role.RequiredCertificateTypes {
-				requiredTypeMap[ctID] = true
+			for _, code := range role.RequiredCertificateTypes {
+				requiredCodesMap[code] = true
 			}
-		}
-	}
-
-	// Translate ObjectIDs to Codes (for checking string matching on Certificate.CertificateType)
-	requiredCodesMap := make(map[string]bool)
-	for ctID := range requiredTypeMap {
-		ct, err := s.typeRepo.FindByID(ctx, ctID)
-		if err == nil {
-			requiredCodesMap[ct.Code] = true
 		}
 	}
 

@@ -17,6 +17,16 @@ type TravelScheduleRepository struct {
 	collection *mongo.Collection
 }
 
+type TravelScheduleFilters struct {
+	TransportID         *bson.ObjectID
+	VesselID            *bson.ObjectID
+	OriginVesselID      *bson.ObjectID
+	DestinationVesselID *bson.ObjectID
+	Status              *domain.TravelScheduleStatus
+	UpcomingOnly        bool
+	Limit               int64
+}
+
 func NewTravelScheduleRepository(db *mongo.Database) *TravelScheduleRepository {
 	return &TravelScheduleRepository{
 		collection: db.Collection("travel_schedules"),
@@ -27,6 +37,8 @@ func (r *TravelScheduleRepository) EnsureIndexes(ctx context.Context) error {
 	indexes := []mongo.IndexModel{
 		{Keys: bson.D{{Key: "transport_id", Value: 1}, {Key: "departure_at", Value: 1}}},
 		{Keys: bson.D{{Key: "vessel_id", Value: 1}, {Key: "departure_at", Value: 1}}},
+		{Keys: bson.D{{Key: "origin_vessel_id", Value: 1}, {Key: "departure_at", Value: 1}}},
+		{Keys: bson.D{{Key: "destination_vessel_id", Value: 1}, {Key: "departure_at", Value: 1}}},
 	}
 	for _, idx := range indexes {
 		_, err := r.collection.Indexes().CreateOne(ctx, idx)
@@ -55,11 +67,50 @@ func (r *TravelScheduleRepository) FindByID(ctx context.Context, id bson.ObjectI
 }
 
 func (r *TravelScheduleRepository) FindUpcoming(ctx context.Context, limit int) ([]domain.TravelSchedule, error) {
-	filter := bson.M{
-		"departure_at": bson.M{"$gte": time.Now()},
-		"status":       domain.TravelScheduleStatusPlanned,
+	status := domain.TravelScheduleStatusPlanned
+	return r.Find(ctx, TravelScheduleFilters{
+		Status:       &status,
+		UpcomingOnly: true,
+		Limit:        int64(limit),
+	})
+}
+
+func (r *TravelScheduleRepository) Find(ctx context.Context, filters TravelScheduleFilters) ([]domain.TravelSchedule, error) {
+	filter := bson.M{}
+
+	if filters.TransportID != nil {
+		filter["transport_id"] = *filters.TransportID
 	}
-	opts := options.Find().SetSort(bson.D{{Key: "departure_at", Value: 1}}).SetLimit(int64(limit))
+	if filters.VesselID != nil {
+		filter["$or"] = bson.A{
+			bson.M{"vessel_id": *filters.VesselID},
+			bson.M{"origin_vessel_id": *filters.VesselID},
+			bson.M{"destination_vessel_id": *filters.VesselID},
+		}
+	}
+	if filters.OriginVesselID != nil {
+		filter["origin_vessel_id"] = *filters.OriginVesselID
+	}
+	if filters.DestinationVesselID != nil {
+		filter["destination_vessel_id"] = *filters.DestinationVesselID
+	}
+	if filters.Status != nil {
+		filter["status"] = *filters.Status
+	}
+	if filters.UpcomingOnly {
+		filter["departure_at"] = bson.M{"$gte": time.Now()}
+	}
+
+	sortDirection := -1
+	if filters.UpcomingOnly {
+		sortDirection = 1
+	}
+
+	opts := options.Find().SetSort(bson.D{{Key: "departure_at", Value: sortDirection}})
+	if filters.Limit > 0 {
+		opts.SetLimit(filters.Limit)
+	}
+
 	cursor, err := r.collection.Find(ctx, filter, opts)
 	if err != nil {
 		return nil, err
