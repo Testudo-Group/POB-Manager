@@ -10,27 +10,30 @@ import (
 	"time"
 )
 
+// RedisInterface defines the methods our app uses
+type RedisInterface interface {
+	Set(ctx context.Context, key string, value string) error
+	Get(ctx context.Context, key string) (string, error)
+	Del(ctx context.Context, key string) error
+	Ping(ctx context.Context) error
+}
+
 type UpstashRedis struct {
 	URL    string
 	Token  string
 	Client *http.Client
 }
 
-// RedisInterface defines the methods our app uses
-type RedisInterface interface {
-	Set(ctx context.Context, key, value string) error
-	Get(ctx context.Context, key string) (string, error)
-	Del(ctx context.Context, key string) error
-	Ping(ctx context.Context) error
-}
+// Ensure UpstashRedis implements RedisInterface at compile time
+var _ RedisInterface = (*UpstashRedis)(nil)
 
 func ConnectRedis(url, token string) *UpstashRedis {
-	// Validate inputs - fail fast if missing
+	// Validate inputs
 	if url == "" {
-		log.Fatal("❌ Redis URL is required but was empty. Set UPSTASH_REDIS_REST_URL environment variable")
+		log.Fatal("❌ UPSTASH_REDIS_REST_URL environment variable is required")
 	}
 	if token == "" {
-		log.Fatal("❌ Redis Token is required but was empty. Set UPSTASH_REDIS_REST_TOKEN environment variable")
+		log.Fatal("❌ UPSTASH_REDIS_REST_TOKEN environment variable is required")
 	}
 	
 	log.Printf("🔗 Connecting to Upstash Redis at: %s", url)
@@ -39,19 +42,28 @@ func ConnectRedis(url, token string) *UpstashRedis {
 		URL:   url,
 		Token: token,
 		Client: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: 30 * time.Second,
 		},
 	}
 }
 
-func (r *UpstashRedis) Set(ctx context.Context, key, value string) error {
+func (r *UpstashRedis) Set(ctx context.Context, key string, value string) error {
 	return r.exec(ctx, "SET", key, value)
 }
 
 func (r *UpstashRedis) Get(ctx context.Context, key string) (string, error) {
 	var result string
 	err := r.exec(ctx, "GET", key, &result)
-	return result, err
+	if err != nil {
+		return "", err
+	}
+	
+	// Handle nil result from Redis
+	if result == "" || result == "<nil>" {
+		return "", nil
+	}
+	
+	return result, nil
 }
 
 func (r *UpstashRedis) Del(ctx context.Context, key string) error {
@@ -68,6 +80,7 @@ func (r *UpstashRedis) Ping(ctx context.Context) error {
 }
 
 func (r *UpstashRedis) exec(ctx context.Context, command string, args ...interface{}) error {
+	// Build the Redis command
 	body := []interface{}{command}
 	body = append(body, args...)
 
@@ -76,6 +89,7 @@ func (r *UpstashRedis) exec(ctx context.Context, command string, args ...interfa
 		return fmt.Errorf("failed to marshal Redis command: %w", err)
 	}
 
+	// Create request
 	req, err := http.NewRequestWithContext(ctx, "POST", r.URL, bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return fmt.Errorf("failed to create Redis request: %w", err)
@@ -84,21 +98,25 @@ func (r *UpstashRedis) exec(ctx context.Context, command string, args ...interfa
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", r.Token))
 
+	// Execute request
 	resp, err := r.Client.Do(req)
 	if err != nil {
 		return fmt.Errorf("Redis request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
+	// Check response status
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("Redis error: status %d - check your URL and token", resp.StatusCode)
 	}
 
+	// Parse response
 	var result []interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return fmt.Errorf("failed to decode Redis response: %w", err)
 	}
 
+	// Handle string result for GET command
 	if len(result) > 0 && len(args) > 0 {
 		if ptr, ok := args[len(args)-1].(*string); ok && result[0] != nil {
 			*ptr = fmt.Sprintf("%v", result[0])
