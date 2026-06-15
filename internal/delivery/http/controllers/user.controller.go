@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/codingninja/pob-management/internal/repository"
@@ -19,7 +20,7 @@ func NewUserController(userService *service.UserService) *UserController {
 }
 
 func (c *UserController) CreateUser(ctx *gin.Context) {
-	organizationID := ctx.GetString("organizationID")
+	organizationID := ctx.GetString("organization_id")
 
 	var req service.CreateUserReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -44,9 +45,11 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 }
 
 func (c *UserController) ListUsers(ctx *gin.Context) {
-	organizationID := ctx.GetString("organizationID")
+	organizationID := ctx.GetString("organization_id")
+	log.Printf("[ListUsers] organizationID from context: %q", organizationID)
 	users, err := c.userService.GetAllUsers(ctx.Request.Context(), organizationID)
 	if err != nil {
+		log.Printf("[ListUsers] GetAllUsers error: %v", err)
 		response.Error(ctx, http.StatusInternalServerError, "failed to get users")
 		return
 	}
@@ -60,7 +63,7 @@ func (c *UserController) ListUsers(ctx *gin.Context) {
 }
 
 func (c *UserController) GetUser(ctx *gin.Context) {
-	organizationID := ctx.GetString("organizationID")
+	organizationID := ctx.GetString("organization_id")
 	id := ctx.Param("id")
 	user, err := c.userService.GetUserByID(ctx.Request.Context(), organizationID, id)
 	if err != nil {
@@ -79,7 +82,7 @@ func (c *UserController) GetUser(ctx *gin.Context) {
 }
 
 func (c *UserController) UpdateUser(ctx *gin.Context) {
-	organizationID := ctx.GetString("organizationID")
+	organizationID := ctx.GetString("organization_id")
 	id := ctx.Param("id")
 
 	var req service.UpdateUserReq
@@ -105,7 +108,7 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 }
 
 func (c *UserController) DeactivateUser(ctx *gin.Context) {
-	organizationID := ctx.GetString("organizationID")
+	organizationID := ctx.GetString("organization_id")
 	id := ctx.Param("id")
 	err := c.userService.DeactivateUser(ctx.Request.Context(), organizationID, id)
 	if err != nil {
@@ -124,7 +127,7 @@ func (c *UserController) DeactivateUser(ctx *gin.Context) {
 }
 
 func (c *UserController) UpdateRole(ctx *gin.Context) {
-	organizationID := ctx.GetString("organizationID")
+	organizationID := ctx.GetString("organization_id")
 	id := ctx.Param("id")
 
 	var req service.UpdateUserRoleReq
